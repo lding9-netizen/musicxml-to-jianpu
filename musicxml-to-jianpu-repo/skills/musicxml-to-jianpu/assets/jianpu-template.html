@@ -1,0 +1,1773 @@
+<!doctype html>
+<html lang="zh-CN">
+<!-- musicxml-to-jianpu · MIT License · Copyright (c) 2026 Lizhou Ding -->
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>五线谱 → 简谱转换器</title>
+<style>:root{color-scheme:light}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#faf9f5;color:#141413}img{max-width:100%}</style>
+<style id="appcss">
+  :root {
+    --bg: #EFEAE0;
+    --panel: #FFFFFF;
+    --paper: #FFFDF6;
+    --ink: #1D1812;
+    --text: #2A2318;
+    --muted: #7A6F5F;
+    --line: #DCD3C2;
+    --accent: #A6402A;
+    --accent-soft: #F3E3DD;
+    --notesize: 22px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #16130E;
+      --panel: #211D16;
+      --text: #E8E0D2;
+      --muted: #9A8F7C;
+      --line: #3A342A;
+      --accent: #D06A4C;
+      --accent-soft: #3A2620;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #16130E;
+    --panel: #211D16;
+    --text: #E8E0D2;
+    --muted: #9A8F7C;
+    --line: #3A342A;
+    --accent: #D06A4C;
+    --accent-soft: #3A2620;
+  }
+  :root[data-theme="light"] {
+    --bg: #EFEAE0;
+    --panel: #FFFFFF;
+    --text: #2A2318;
+    --muted: #7A6F5F;
+    --line: #DCD3C2;
+    --accent: #A6402A;
+    --accent-soft: #F3E3DD;
+  }
+
+  * { box-sizing: border-box; }
+  html { background: var(--bg); }
+  body {
+    margin: 0;
+    font-family: -apple-system, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+    color: var(--text);
+    line-height: 1.6;
+  }
+  .wrap { max-width: 960px; margin: 0 auto; padding: 32px 20px 80px; }
+
+  header.app h1 {
+    font-family: "Songti SC", "STSong", "SimSun", serif;
+    font-size: 28px;
+    margin: 0 0 4px;
+    letter-spacing: 2px;
+  }
+  header.app p { margin: 0; color: var(--muted); font-size: 14px; }
+
+  /* ---------- dropzone ---------- */
+  #dropzone {
+    margin-top: 28px;
+    border: 2px dashed var(--line);
+    border-radius: 8px;
+    padding: 56px 24px;
+    text-align: center;
+    background: var(--panel);
+    cursor: pointer;
+    transition: border-color .15s, background .15s;
+  }
+  #dropzone.dragover { border-color: var(--accent); background: var(--accent-soft); }
+  #dropzone .big { font-size: 17px; margin-bottom: 6px; }
+  #dropzone .hint { color: var(--muted); font-size: 13px; }
+  #dropzone .hint code {
+    background: var(--bg); border: 1px solid var(--line);
+    border-radius: 4px; padding: 1px 5px; font-size: 12px;
+  }
+  .samplebtn {
+    margin-top: 18px; display: inline-block;
+    background: none; border: 1px solid var(--accent); color: var(--accent);
+    border-radius: 6px; padding: 7px 18px; font-size: 14px; cursor: pointer;
+    font-family: inherit;
+  }
+  .samplebtn:hover { background: var(--accent-soft); }
+
+  #error {
+    display: none; margin-top: 16px; padding: 12px 16px;
+    border-left: 3px solid var(--accent); background: var(--accent-soft);
+    border-radius: 0 6px 6px 0; font-size: 14px;
+  }
+
+  /* ---------- controls ---------- */
+  #controls {
+    display: none; margin-top: 24px; padding: 14px 18px;
+    background: var(--panel); border: 1px solid var(--line); border-radius: 8px;
+    font-size: 14px;
+  }
+  #controls .row { display: flex; flex-wrap: wrap; gap: 10px 22px; align-items: center; }
+  #controls .row + .row { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--line); }
+  #controls label.ctl { display: inline-flex; align-items: center; gap: 6px; }
+  #controls select, #controls button {
+    font-family: inherit; font-size: 13px; color: var(--text);
+    background: var(--bg); border: 1px solid var(--line); border-radius: 5px;
+    padding: 4px 8px; cursor: pointer;
+  }
+  #controls button.primary { background: var(--accent); border-color: var(--accent); color: #FFFDF6; }
+  #filelabel { color: var(--muted); }
+  #filelabel b { color: var(--text); font-weight: 600; }
+  .partchecks { display: inline-flex; flex-wrap: wrap; gap: 4px 16px; }
+  .partchecks label { display: inline-flex; align-items: center; gap: 5px; cursor: pointer; }
+  .partchecks input { accent-color: var(--accent); }
+  .percgrps { display: inline-flex; flex-wrap: wrap; gap: 6px 26px; }
+  .percgrp { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 4px 14px; }
+  .percgrp > b { font-weight: 600; }
+
+  /* ---------- sheet (always ink on paper, in both themes) ---------- */
+  #sheet {
+    display: none; margin-top: 24px; background: var(--paper); color: var(--ink);
+    border: 1px solid var(--line); border-radius: 4px;
+    padding: 48px 44px 56px;
+    box-shadow: 0 2px 12px rgba(0,0,0,.08);
+  }
+  .s-title {
+    font-family: "Songti SC", "STSong", "SimSun", serif;
+    font-size: 30px; text-align: left; margin: 0 0 2px;
+    letter-spacing: 3px; text-wrap: balance;
+  }
+  .s-head {
+    display: flex; justify-content: space-between; align-items: flex-end;
+    margin: 18px 0 6px; font-size: 15px;
+    font-family: "Times New Roman", "Songti SC", serif;
+  }
+  .s-key { font-weight: 600; font-variant-numeric: tabular-nums; }
+  .s-key .ts { margin-left: 14px; }
+  .s-key .tempo { margin-left: 14px; font-weight: 400; }
+  .s-composer { font-size: 14px; }
+
+  .part { margin-top: 10px; }
+  .part-name {
+    font-family: "Songti SC", "STSong", "SimSun", serif;
+    font-size: 16px; font-weight: 700; margin: 26px 0 2px;
+    color: var(--ink);
+  }
+  .voice-name { font-size: 12px; color: #8a8a8a; margin: 8px 0 0; }
+
+  .line {
+    display: flex; flex-wrap: wrap; align-items: flex-start;
+    justify-content: flex-start;
+    row-gap: 30px; margin-top: 16px;
+    font-family: "Times New Roman", "Georgia", serif;
+    font-size: var(--notesize);
+  }
+  .measure {
+    position: relative;
+    display: inline-flex; align-items: flex-start;
+    padding: 0 .5em 0 .55em;
+    border-right: 1.5px solid var(--ink);
+    margin-bottom: 4px;
+  }
+  .measure.final { border-right: 1.5px solid var(--ink); padding-right: .66em; }
+  .measure.final::after {
+    content: ""; position: absolute; right: .16em; top: 0; bottom: 0;
+    width: .14em; background: var(--ink);
+  }
+  .measure.double { border-right: 4px double var(--ink); }
+  .measure.sec-start { border-left: 4px double var(--ink); padding-left: .7em; }
+  .measure.repeat-end { border-right: 4px double var(--ink); }
+  .measure.repeat-end::after {
+    content: "•\A•"; white-space: pre; position: absolute;
+    right: .18em; top: .95em; font-size: .35em; line-height: 1.5; color: var(--ink);
+  }
+  .measure.repeat-start::before {
+    content: "•\A•"; white-space: pre; position: absolute;
+    left: .14em; top: .95em; font-size: .35em; line-height: 1.5; color: var(--ink);
+  }
+  .measure.repeat-start { border-left: 4px double var(--ink); padding-left: .75em; }
+
+  .cell { display: inline-flex; flex-direction: column; align-items: center; margin: 0 .18em; }
+  .da { height: .62em; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; gap: .1em; }
+  .db { height: .62em; display: flex; flex-direction: column; justify-content: flex-start; align-items: center; gap: .1em; }
+  .octdot { width: .17em; height: .17em; border-radius: 50%; background: var(--ink); }
+  .num { line-height: 1.18; white-space: nowrap; }
+  .num .acc { font-size: .62em; vertical-align: .28em; margin-right: .04em; }
+  .num .augdot { margin-left: .08em; }
+  .ub { height: .6em; }
+  .lyr { font-size: .55em; font-family: "Songti SC","SimSun",serif; color: var(--ink); margin-top: .1em; white-space: nowrap; }
+
+  .cell.grace { font-size: .6em; align-self: flex-start; margin-top: .35em; }
+  .cell.grace .num { border-bottom: 2px double var(--ink); }
+  .cell.markcell {
+    font-size: .6em; font-weight: 700; align-self: flex-start;
+    margin-top: 1.1em; font-family: "Times New Roman", serif;
+  }
+  .chordnum { display: block; }
+
+  /* percussion marks: 鼓心 = × inside a circle (the circle is an overlay, so it
+     never changes the cell's box and underlines/ties stay where they were);
+     高/低 reuse the octave-dot slots above/below the ×. */
+  .pm-c { position: relative; display: inline-block; margin: 0 .2em; }
+  .pm-c::after {
+    content: ""; position: absolute; left: 50%; top: 50%;
+    width: .92em; height: .92em; box-sizing: border-box;
+    transform: translate(-50%, -50%);
+    border: 1.5px solid currentColor; border-radius: 50%; pointer-events: none;
+  }
+  .perc-legend {
+    font-size: 13px; color: #6b6558; margin: 0 0 2px;
+    font-family: "Songti SC", "SimSun", serif;
+  }
+  .perc-legend .lg-item { margin-right: 1.2em; white-space: nowrap; }
+  .perc-legend .pm-c, .perc-legend .lg-hi, .perc-legend .lg-lo {
+    font-family: "Times New Roman", serif; font-size: 15px;
+  }
+  .lg-hi, .lg-lo { position: relative; display: inline-block; }
+  .lg-hi::before, .lg-lo::after {
+    content: ""; position: absolute; left: 50%; width: 3px; height: 3px;
+    margin-left: -1.5px; border-radius: 50%; background: currentColor;
+  }
+  .lg-hi::before { top: -2px; }
+  .lg-lo::after { bottom: -2px; }
+
+  .uline { position: absolute; height: 1.5px; background: var(--ink); pointer-events: none; }
+  .tiearc {
+    position: absolute; pointer-events: none;
+    border: 1.5px solid var(--ink); border-bottom: none;
+    border-radius: 50% 50% 0 0 / 100% 100% 0 0;
+    height: .38em;
+  }
+  .tuplabel {
+    position: absolute; pointer-events: none; font-size: .55em; font-style: italic;
+    color: var(--ink); transform: translateX(-50%);
+  }
+  .orn { position: absolute; pointer-events: none; transform: translateX(-50%); color: var(--ink); }
+  .orn.trilltxt { font-style: italic; font-size: .55em; font-family: "Times New Roman", serif; }
+  .orn.tremb { display: flex; flex-direction: column; gap: .09em; }
+  .orn.tremb i { display: block; width: .6em; height: 1.5px; background: var(--ink); }
+  .sec-head {
+    display: flex; gap: 16px; align-items: baseline;
+    margin: 30px 0 -4px;
+    font-family: "Songti SC", "STSong", "SimSun", serif;
+    font-size: 15px; font-weight: 700; color: var(--ink);
+  }
+  .sec-head .tempo { font-family: "Times New Roman", serif; font-weight: 400; }
+  .line.newsec { margin-top: 34px; }
+  .volta {
+    position: absolute; top: -1.1em; left: 0; font-size: .5em;
+    border-top: 1px solid var(--ink); border-left: 1px solid var(--ink);
+    padding: 0 .6em 0 .3em; color: var(--ink);
+  }
+  .mnum {
+    position: absolute; top: -1.2em; left: .12em; font-size: .48em;
+    color: #8a8377; font-family: "Times New Roman", serif;
+    font-variant-numeric: tabular-nums;
+  }
+  .mword {
+    position: absolute; top: -1.05em; left: .12em; font-size: .55em;
+    font-family: "Songti SC", "SimSun", serif; color: var(--ink);
+    white-space: nowrap;
+  }
+
+  footer.help { margin-top: 36px; font-size: 13px; color: var(--muted); }
+  footer.help h4 { font-size: 13px; margin: 0 0 6px; color: var(--text); }
+  footer.help ul { margin: 0; padding-left: 18px; }
+  footer.help li { margin: 3px 0; }
+
+  @media print {
+    body { background: #fff; }
+    .wrap { max-width: none; padding: 0; }
+    header.app, #dropzone, #controls, #error, footer.help { display: none !important; }
+    #sheet {
+      display: block !important; border: none; box-shadow: none; border-radius: 0;
+      padding: 0; background: #fff; color: #000;
+    }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="app">
+    <h1>五线谱 → 简谱</h1>
+    <p>上传 MusicXML 乐谱，自动转换为可打印的简谱分谱</p>
+  </header>
+
+  <div id="dropzone">
+    <div class="big">拖入乐谱文件，或点击选择</div>
+    <div class="hint">支持 <code>.musicxml</code> <code>.xml</code> <code>.mxl</code> —— 在 MuseScore / Sibelius / Finale 中通过「导出 MusicXML」获得</div>
+    <button class="samplebtn" id="samplebtn" type="button">先看一个示例 →</button>
+    <input type="file" id="fileinput" accept=".musicxml,.xml,.mxl" hidden>
+  </div>
+
+  <div id="error"></div>
+
+  <div id="controls">
+    <div class="row">
+      <span id="filelabel"></span>
+      <button type="button" id="reselect">换一个文件</button>
+      <label class="ctl">调号
+        <select id="keysel"></select>
+      </label>
+      <label class="ctl">字号
+        <select id="sizesel">
+          <option value="18px">小</option>
+          <option value="22px" selected>中</option>
+          <option value="27px">大</option>
+        </select>
+      </label>
+      <button type="button" class="primary" id="dlbtn">下载谱面</button>
+      <button type="button" id="printbtn">打印</button>
+      <span id="dlmsg" style="display:none;color:var(--muted)"></span>
+    </div>
+    <div class="row" id="partrow" style="display:none">
+      <span style="color:var(--muted)">声部：</span>
+      <span class="partchecks" id="partchecks"></span>
+    </div>
+    <div class="row" id="percrow" style="display:none">
+      <span style="color:var(--muted)">打击乐记号：</span>
+      <span class="percgrps" id="percgrps"></span>
+    </div>
+  </div>
+
+  <div id="sheet"></div>
+
+  <footer class="help">
+    <h4>使用提示</h4>
+    <ul>
+      <li>转换按「首调唱名」进行：1 = 谱面调号的主音（小调曲目按关系大调记谱，即国内简谱通行做法）。可用上方「调号」下拉框改写。</li>
+      <li>点「下载谱面」把当前勾选的声部保存为独立网页文件，双击打开后按 ⌘P（Windows 为 Ctrl+P）即可打印或存为 PDF——只勾一个声部再下载，就是给单个团员的分谱。「打印」按钮在部分嵌入环境中可能被浏览器拦截，此时请用下载方式。</li>
+      <li>速度类标记（rit.、渐慢、变速的节拍器记号等）会自动出现在每个声部；pizz.、滑奏等这类乐器专属标记只保留在对应声部。</li>
+      <li>连音线、附点、休止符、三连音、倚音、反复记号均会转换；歌词（如有）显示在音符下方。</li>
+      <li>按声部名称自动识别乐器：弹拨乐（琵琶、柳琴、阮、扬琴、古筝等）的倚音改记为音符上方三道横线（轮/滚奏），笛类的倚音改记为 tr（颤音）；打击乐声部无音高音符记作 ×。</li>
+      <li>打击乐记号：鼓类用带圈的 × 表示鼓心、普通 × 表示鼓边；木鱼用 × 上加点表示高音、下加点表示低音，两者同时敲击则上下各加一点。每个声部下方会标出图例，勾选打击乐声部后可在「打击乐记号」一行手动调整。</li>
+      <li>谱面中的双纵线、终止线、分页处或带编号的标题文字（如「三、」「2.」「III.」）会自动分乐章，分段点全谱统一，每个声部都会显示相同的乐章标题与新速度。</li>
+      <li>每 5 小节自动在小节左上角标注小节号；空白小节统一记作 0 0，休止符一律不使用延时线（二分休止记作 0 0）。</li>
+      <li>文件不会上传到任何服务器，全部在浏览器本地完成转换。</li>
+    </ul>
+  </footer>
+</div>
+
+<!--EMBEDDED_SCORE-->
+<script>
+"use strict";
+
+/* ============ utilities ============ */
+const $ = s => document.querySelector(s);
+function txt(el, sel) {
+  if (!el) return null;
+  const n = sel ? el.querySelector(sel) : el;
+  return n ? n.textContent.trim() : null;
+}
+function num(el, sel, dflt) {
+  const t = txt(el, sel);
+  const v = t === null ? NaN : parseFloat(t);
+  return isNaN(v) ? dflt : v;
+}
+
+/* ============ .mxl (zip) reader — native DecompressionStream ============ */
+async function unzipMxl(buf) {
+  const u8 = new Uint8Array(buf);
+  const dv = new DataView(buf);
+  let eocd = -1;
+  const stop = Math.max(0, u8.length - 22 - 65536);
+  for (let i = u8.length - 22; i >= stop; i--) {
+    if (dv.getUint32(i, true) === 0x06054b50) { eocd = i; break; }
+  }
+  if (eocd < 0) throw new Error("无法解析 .mxl 压缩包（找不到 zip 目录）");
+  const count = dv.getUint16(eocd + 10, true);
+  let off = dv.getUint32(eocd + 16, true);
+  const entries = [];
+  const td = new TextDecoder();
+  for (let i = 0; i < count; i++) {
+    if (dv.getUint32(off, true) !== 0x02014b50) break;
+    const method = dv.getUint16(off + 10, true);
+    const csize = dv.getUint32(off + 20, true);
+    const nlen = dv.getUint16(off + 28, true);
+    const elen = dv.getUint16(off + 30, true);
+    const clen = dv.getUint16(off + 32, true);
+    const lho = dv.getUint32(off + 42, true);
+    const name = td.decode(u8.subarray(off + 46, off + 46 + nlen));
+    entries.push({ name, method, csize, lho });
+    off += 46 + nlen + elen + clen;
+  }
+  async function extract(ent) {
+    const p = ent.lho;
+    if (dv.getUint32(p, true) !== 0x04034b50) throw new Error("压缩包条目损坏");
+    const nlen = dv.getUint16(p + 26, true);
+    const elen = dv.getUint16(p + 28, true);
+    const data = u8.subarray(p + 30 + nlen + elen, p + 30 + nlen + elen + ent.csize);
+    if (ent.method === 0) return td.decode(data);
+    if (ent.method !== 8) throw new Error("不支持的压缩方式");
+    const stream = new Blob([data]).stream().pipeThrough(new DecompressionStream("deflate-raw"));
+    return await new Response(stream).text();
+  }
+  let target = null;
+  const container = entries.find(e => e.name === "META-INF/container.xml");
+  if (container) {
+    const cx = await extract(container);
+    const m = cx.match(/full-path="([^"]+)"/);
+    if (m) target = entries.find(e => e.name === m[1]);
+  }
+  if (!target) target = entries.find(e => !e.name.startsWith("META-INF") && /\.(musicxml|xml)$/i.test(e.name));
+  if (!target) throw new Error(".mxl 包里找不到乐谱文件");
+  return await extract(target);
+}
+
+/* ============ MusicXML parsing ============ */
+/* instrument family by part name: plucked (弹拨) / dizi (笛类) / perc (打击) */
+function classifyFamily(name) {
+  const n = (name || "").toLowerCase();
+  if (/琵琶|柳琴|阮|三弦|扬琴|古筝|月琴|秦琴|pipa|liuqin|ruan|sanxian|yangqin|guzheng|zheng/.test(n)) return "plucked";
+  if (/笛|dizi|flute|piccolo/.test(n)) return "dizi";
+  if (/鼓|锣|钹|镲|木鱼|梆子|拍板|响板|磬|碰铃|串铃|风铃|编钟|沙锤|沙球|打击|percussion|drum|cymbal|gong|tam|timpani|triangle|block|clave|shaker|maraca|castanet|\b(da|xiao|pai|ban|tang|hua)?gu\b|(xiao|da|yun)?luo\b|muyu|\bbo\b|(xiao|da)cha\b/.test(n)) return "perc";
+  return "other";
+}
+
+const FIFTHS_TONIC = {
+  "-7": ["C", -1], "-6": ["G", -1], "-5": ["D", -1], "-4": ["A", -1], "-3": ["E", -1],
+  "-2": ["B", -1], "-1": ["F", 0], "0": ["C", 0], "1": ["G", 0], "2": ["D", 0],
+  "3": ["A", 0], "4": ["E", 0], "5": ["B", 0], "6": ["F", 1], "7": ["C", 1]
+};
+
+function parseScore(doc) {
+  const root = doc.querySelector("score-partwise");
+  if (!root) {
+    if (doc.querySelector("score-timewise")) throw new Error("这是 timewise 格式的 MusicXML，请在打谱软件中改用常规（partwise）格式导出");
+    if (doc.querySelector("parsererror")) throw new Error("文件不是有效的 XML，可能已损坏");
+    throw new Error("这不是 MusicXML 乐谱文件");
+  }
+  /* prefer the title text actually printed on page 1 (a credit frame) over the
+     file's metadata title, which is often stale */
+  let creditTitle = null;
+  root.querySelectorAll(":scope > credit").forEach(c => {
+    if (creditTitle) return;
+    const page = parseInt(c.getAttribute("page") || "1", 10);
+    if (page !== 1 || txt(c, "credit-type") !== "title") return;
+    const t = [...c.querySelectorAll("credit-words")].map(w => w.textContent.trim()).filter(Boolean).join(" ");
+    if (t) creditTitle = t;
+  });
+  const meta = {
+    title: creditTitle || txt(root, "work > work-title") || txt(root, "movement-title") || "",
+    composer: ""
+  };
+  root.querySelectorAll("identification creator").forEach(c => {
+    if (c.getAttribute("type") === "composer" && !meta.composer) meta.composer = c.textContent.trim();
+  });
+
+  const partNames = {};
+  const partInstr = {}; /* partId → { instrumentId: name } — percussion sounds live here */
+  root.querySelectorAll("part-list score-part").forEach(sp => {
+    const pid = sp.getAttribute("id");
+    partNames[pid] = txt(sp, "part-name") || pid;
+    partInstr[pid] = {};
+    sp.querySelectorAll("score-instrument").forEach(si => {
+      partInstr[pid][si.getAttribute("id")] = txt(si, "instrument-name") || "";
+    });
+  });
+
+  const parts = [];
+  root.querySelectorAll(":scope > part").forEach(p => {
+    const part = {
+      id: p.getAttribute("id"),
+      name: partNames[p.getAttribute("id")] || p.getAttribute("id"),
+      firstKey: null, firstTime: null, tempo: null,
+      hasUnpitched: false,
+      measures: []
+    };
+    let divisions = 1, fifths = 0, beats = 4, beatType = 4;
+    let started = false;
+
+    p.querySelectorAll(":scope > measure").forEach((m, mi) => {
+      const M = {
+        num: m.getAttribute("number"), marks: [], notes: [],
+        barRight: null, repeatStart: false, repeatEnd: false, ending: null,
+        newPage: false, words: [], tempoMark: null, secStartBar: false,
+        divisions: divisions, beats: beats, beatType: beatType
+      };
+      let cur = 0;
+      const lastNoteInVoice = {};
+
+      for (const el of m.children) {
+        const tag = el.tagName;
+        if (tag === "attributes") {
+          const d = num(el, ":scope > divisions", null);
+          if (d) { divisions = d; M.divisions = d; }
+          const k = el.querySelector(":scope > key");
+          if (k) {
+            const f = Math.round(num(k, "fifths", 0));
+            if (started && f !== fifths) M.marks.push({ type: "key", fifths: f });
+            fifths = f;
+            if (part.firstKey === null) part.firstKey = f;
+          }
+          const t = el.querySelector(":scope > time");
+          if (t) {
+            const b = Math.round(num(t, "beats", 4));
+            const bt = Math.round(num(t, "beat-type", 4));
+            if (started && (b !== beats || bt !== beatType)) M.marks.push({ type: "time", beats: b, beatType: bt });
+            beats = b; beatType = bt;
+            if (!part.firstTime) part.firstTime = { beats: b, beatType: bt };
+            M.beats = b; M.beatType = bt;
+          }
+        } else if (tag === "direction") {
+          const met = el.querySelector("metronome");
+          if (met) {
+            const unit = txt(met, "beat-unit") || "quarter";
+            const pm = num(met, "per-minute", null);
+            if (pm) {
+              const tm = { unit, dotted: !!met.querySelector("beat-unit-dot"), pm };
+              if (!M.tempoMark) M.tempoMark = tm;
+              if (part.tempo === null) part.tempo = tm;
+            }
+          }
+          const snd = el.querySelector("sound[tempo]");
+          if (snd) {
+            const tm = { unit: "quarter", dotted: false, pm: Math.round(parseFloat(snd.getAttribute("tempo"))) };
+            if (!M.tempoMark) M.tempoMark = tm;
+            if (part.tempo === null) part.tempo = tm;
+          }
+          el.querySelectorAll("direction-type words, direction-type rehearsal").forEach(w => {
+            const t = w.textContent.trim();
+            if (t && !M.words.includes(t)) M.words.push(t);
+          });
+        } else if (tag === "sound" && el.getAttribute("tempo") && part.tempo === null) {
+          part.tempo = { unit: "quarter", dotted: false, pm: Math.round(parseFloat(el.getAttribute("tempo"))) };
+        } else if (tag === "backup") {
+          cur -= num(el, "duration", 0);
+        } else if (tag === "forward") {
+          cur += num(el, "duration", 0);
+        } else if (tag === "barline") {
+          const style = txt(el, "bar-style");
+          const rep = el.querySelector("repeat");
+          const end = el.querySelector("ending");
+          const loc = el.getAttribute("location") || "right";
+          if (rep) {
+            if (rep.getAttribute("direction") === "forward") M.repeatStart = true;
+            else M.repeatEnd = true;
+          }
+          if (end && (end.getAttribute("type") === "start")) M.ending = end.getAttribute("number") || txt(end) || "1";
+          if (loc === "right" && style && !rep) {
+            if (/light-light/.test(style)) M.barRight = "double";
+            else if (/light-heavy|heavy/.test(style)) M.barRight = "final";
+          }
+          if (loc === "left" && style && !rep && /heavy/.test(style)) M.secStartBar = true;
+        } else if (tag === "print") {
+          if (el.getAttribute("new-page") === "yes") M.newPage = true;
+        } else if (tag === "note") {
+          if (el.getAttribute("print-object") === "no") {
+            const d0 = num(el, "duration", 0);
+            if (!el.querySelector("chord")) cur += d0;
+            continue;
+          }
+          started = true;
+          const isChord = !!el.querySelector(":scope > chord");
+          const grace = !!el.querySelector(":scope > grace");
+          const dur = grace ? 0 : num(el, ":scope > duration", 0);
+          const voice = txt(el, "voice") || "1";
+          const rest = el.querySelector(":scope > rest");
+          const unpitchedEl = el.querySelector(":scope > unpitched");
+          if (unpitchedEl) part.hasUnpitched = true;
+          const pitchEl = el.querySelector(":scope > pitch");
+          const pitch = pitchEl ? {
+            step: txt(pitchEl, "step") || "C",
+            alter: Math.round(num(pitchEl, "alter", 0)),
+            oct: Math.round(num(pitchEl, "octave", 4))
+          } : null;
+
+          /* a percussion hit's "sound": which instrument of the part played it and
+             where it sits on the staff. Some exporters write garbage in
+             display-step / display-octave, so only trust real letters/digits. */
+          let sound = null;
+          if (unpitchedEl) {
+            const ds = (txt(unpitchedEl, "display-step") || "").toUpperCase();
+            const dof = parseInt(txt(unpitchedEl, "display-octave"), 10);
+            const si = "CDEFGAB".indexOf(ds);
+            const ie = el.querySelector(":scope > instrument");
+            sound = {
+              inst: ie ? (ie.getAttribute("id") || "") : "",
+              pos: (ds.length === 1 && si >= 0 && dof >= 0 && dof <= 9) ? dof * 7 + si : null
+            };
+          }
+
+          /* chord members share the previous note's onset. Pitched ones stack
+             into the chord; unpitched ones (two percussion hits at once) stay ONE
+             cell that remembers every sound, instead of being laid out one after
+             another (which made the measure overflow) */
+          if (isChord && (pitch || unpitchedEl) && lastNoteInVoice[voice]) {
+            if (pitch) lastNoteInVoice[voice].pitches.push(pitch);
+            else if (lastNoteInVoice[voice].sounds) lastNoteInVoice[voice].sounds.push(sound);
+            continue;
+          }
+
+          const note = {
+            voice, start: cur, dur, grace,
+            rest: !!rest,
+            restMeasure: rest ? rest.getAttribute("measure") === "yes" : false,
+            unpitched: !!unpitchedEl,
+            sounds: sound ? [sound] : null,
+            pitches: pitch ? [pitch] : [],
+            type: txt(el, ":scope > type"),
+            dots: el.querySelectorAll(":scope > dot").length,
+            tieStart: false, tieStop: false, slurStart: false, slurStop: false,
+            trill: false, trem: 0,
+            tupRatio: null, lyric: null
+          };
+          const ornEl = el.querySelector("notations ornaments");
+          if (ornEl) {
+            if (ornEl.querySelector("trill-mark") || ornEl.querySelector('wavy-line[type="start"]')) note.trill = true;
+            const trEl = ornEl.querySelector("tremolo");
+            if (trEl) note.trem = parseInt(trEl.textContent) || 3;
+          }
+          el.querySelectorAll(":scope > tie").forEach(t => {
+            if (t.getAttribute("type") === "start") note.tieStart = true;
+            if (t.getAttribute("type") === "stop") note.tieStop = true;
+          });
+          el.querySelectorAll("notations slur").forEach(s => {
+            if (s.getAttribute("type") === "start") note.slurStart = true;
+            if (s.getAttribute("type") === "stop") note.slurStop = true;
+          });
+          const tm = el.querySelector(":scope > time-modification");
+          if (tm) {
+            const a = Math.round(num(tm, "actual-notes", 1));
+            const n = Math.round(num(tm, "normal-notes", 1));
+            if (a !== n) note.tupRatio = a;
+          }
+          const lyEl = el.querySelector(":scope > lyric text");
+          if (lyEl) note.lyric = lyEl.textContent;
+
+          M.notes.push(note);
+          lastNoteInVoice[voice] = note;
+          cur += dur;
+        }
+      }
+      part.measures.push(M);
+    });
+
+    if (part.firstKey === null) part.firstKey = 0;
+    if (!part.firstTime) part.firstTime = { beats: 4, beatType: 4 };
+    part.family = classifyFamily(part.name);
+    part.percussion = part.family === "perc" || part.hasUnpitched;
+    part.instruments = partInstr[part.id] || {};
+    part.sounds = collectSounds(part);
+    parts.push(part);
+  });
+
+  if (!parts.length) throw new Error("乐谱中没有找到任何声部");
+
+  /* score-wide section (乐章/乐段) boundaries: union across all parts, so every
+     part splits identically even when barlines/text only exist in one part */
+  const HEADING_RE = /^\s*(第\s*[一二三四五六七八九十百\d]+\s*(乐章|乐段|部分|章|段)|([一二三四五六七八九十百]+|\d+|[IVXLivxl]+)\s*[、.．·:：]|引子|序曲|序奏|尾声|终曲|间奏)/;
+  const nM = Math.max(...parts.map(p => p.measures.length));
+
+  /* barline-derived boundaries: double / final bars, or a heavy-light bar
+     opening a measure (page breaks alone are NOT boundaries — scores paginate) */
+  const barBound = new Array(nM).fill(false);
+  parts.forEach(p => p.measures.forEach((M, i) => {
+    if ((M.barRight === "double" || M.barRight === "final") && i + 1 < nM) barBound[i + 1] = true;
+    if (M.secStartBar) barBound[i] = true;
+  }));
+
+  const sectionStarts = barBound.slice();
+  if (nM) sectionStarts[0] = true;
+
+  /* heading text starts a section; system text is often anchored a few
+     measures away from the real boundary, so snap it to a nearby barline
+     boundary and carry its words there */
+  const relocWords = {};
+  parts.forEach(p => p.measures.forEach((M, i) => {
+    if (!M.words.some(w => HEADING_RE.test(w))) return;
+    let target = i;
+    if (!barBound[i]) {
+      for (let d = 1; d <= 12; d++) {
+        if (i + d < nM && barBound[i + d]) { target = i + d; break; }
+        if (i - d >= 0 && barBound[i - d]) { target = i - d; break; }
+      }
+    }
+    sectionStarts[target] = true;
+    if (target !== i) {
+      const moved = M.words;
+      M.words = [];
+      if (!relocWords[target]) relocWords[target] = [];
+      moved.forEach(w => { if (!relocWords[target].includes(w)) relocWords[target].push(w); });
+    }
+  }));
+
+  /* movement titles living in text frames export as <credit> on a page, not as
+     measure text — map pages (from <print new-page>) back to their first measure */
+  const creditWords = {};
+  const pageStartAt = { 1: 0 };
+  let pg = 1;
+  for (let i = 1; i < nM; i++) {
+    if (parts.some(p => p.measures[i] && p.measures[i].newPage)) { pg++; pageStartAt[pg] = i; }
+  }
+  root.querySelectorAll(":scope > credit").forEach(c => {
+    const page = parseInt(c.getAttribute("page") || "1", 10);
+    const text = [...c.querySelectorAll("credit-words")].map(w => w.textContent.trim()).filter(Boolean).join(" ");
+    if (!text || page <= 1 || /^\d+$/.test(text)) return;
+    const mi = pageStartAt[page];
+    if (mi == null) return;
+    sectionStarts[mi] = true;
+    if (!creditWords[mi]) creditWords[mi] = [];
+    if (!creditWords[mi].includes(text)) creditWords[mi].push(text);
+  });
+
+  const secWords = {}, secTempo = {};
+  parts.forEach(p => p.measures.forEach((M, i) => {
+    if (!sectionStarts[i]) return;
+    M.words.forEach(w => {
+      if (!secWords[i]) secWords[i] = [];
+      if (!secWords[i].includes(w)) secWords[i].push(w);
+    });
+    if (M.tempoMark && !secTempo[i]) secTempo[i] = M.tempoMark;
+  }));
+  [creditWords, relocWords].forEach(extra => Object.keys(extra).forEach(mi => {
+    if (!secWords[mi]) secWords[mi] = [];
+    extra[mi].forEach(w => { if (!secWords[mi].includes(w)) secWords[mi].push(w); });
+  }));
+
+  /* tempo directives (rit., a tempo, metronome changes…) are system text that
+     lives only on the top staff — broadcast them to every part */
+  const TEMPO_WORDS_RE = /^\s*[(（]?(rit|rall|riten|accel|a\s?tempo|tempo|rubato|allarg|stringendo|渐慢|渐快|突慢|突快|稍慢|稍快|自由|原速|回原速)/i;
+  const sysWords = {}, sysTempo = {};
+  parts[0].measures.forEach((M, i) => {
+    const ws = M.words.filter(w => TEMPO_WORDS_RE.test(w));
+    if (ws.length) sysWords[i] = ws;
+    if (M.tempoMark) sysTempo[i] = M.tempoMark;
+  });
+
+  return { meta, parts, sectionStarts, secWords, secTempo, sysWords, sysTempo };
+}
+
+/* ============ percussion: sounds, roles, marks ============
+   Unpitched notes are all drawn as ×. To tell a drum's centre from its rim, or a
+   wood block's high from its low, every distinct *sound* of a percussion part gets
+   a role that decides how its × is drawn:
+     center 鼓心 → × inside a circle          edge 鼓边 → plain ×
+     hi 高 / lo 低 → × with a dot above / below (same idea as octave dots)
+     x 普通 → plain ×
+   A "sound" is one instrument of the part; if the part only has one instrument,
+   it is one staff position instead (some people separate them by line/space). */
+const ROLE_DEF = {
+  x:      { mark: "x", oct: 0 },
+  edge:   { mark: "x", oct: 0 },
+  center: { mark: "c", oct: 0 },
+  hi:     { mark: "x", oct: 1 },
+  lo:     { mark: "x", oct: -1 }
+};
+const ROLE_OPTIONS = [
+  ["center", "鼓心（圈×）"], ["edge", "鼓边（×）"],
+  ["hi", "高（×上加点）"], ["lo", "低（×下加点）"], ["x", "普通（×）"]
+];
+const ROLE_LEGEND = {
+  center: ['<span class="pm-c">×</span>', "鼓心"],
+  edge:   ["×", "鼓边"],
+  hi:     ['<span class="lg-hi">×</span>', "高"],
+  lo:     ['<span class="lg-lo">×</span>', "低"]
+};
+
+function posName(pos) { return "CDEFGAB"[pos % 7] + Math.floor(pos / 7); }
+
+function soundKey(part, s) {
+  return part.percMode === "inst" ? (s.inst || "?") : (s.pos == null ? "?" : "p" + s.pos);
+}
+
+/* the distinct sounds a part uses, most frequent first */
+function collectSounds(part) {
+  const notes = [];
+  part.measures.forEach(M => M.notes.forEach(n => { if (n.sounds) notes.push(n); }));
+  const insts = new Set();
+  notes.forEach(n => n.sounds.forEach(s => { if (s.inst) insts.add(s.inst); }));
+  part.percMode = insts.size > 1 ? "inst" : "pos";
+  const map = new Map();
+  notes.forEach(n => n.sounds.forEach(s => {
+    const key = soundKey(part, s);
+    let e = map.get(key);
+    if (!e) {
+      e = { key, inst: s.inst, pos: s.pos, count: 0, name: (part.instruments || {})[s.inst] || "" };
+      map.set(key, e);
+    }
+    e.count++;
+  }));
+  return [...map.values()].sort((a, b) => b.count - a.count);
+}
+
+function soundLabel(part, s) {
+  const base = s.name || (s.pos != null ? "谱线位置 " + posName(s.pos) : "音色");
+  return base + "（" + s.count + " 次）";
+}
+
+/* how a part's sounds are told apart: drums → centre/rim, wood blocks → high/low */
+function percScheme(part) {
+  const s = (part.name || "") + " " + Object.values(part.instruments || {}).join(" ");
+  if (/木鱼|梆|wood\s?block|muyu/i.test(s)) return "hilo";
+  if (/铃鼓|tambourine|定音鼓|timpani/i.test(s)) return "plain";
+  if (/鼓|drum|dagu|xiaogu|(^|[^a-z])gu($|[^a-z])/i.test(s)) return "drum";
+  return "plain";
+}
+
+/* default role of every sound: instrument names first ("High"/"Low", "rim"…),
+   then frequency (drums) or staff height (wood blocks) */
+function defaultPercRoles(part) {
+  const roles = {};
+  const sounds = part.sounds || [];
+  const scheme = percScheme(part);
+  if (scheme === "drum") {
+    const un = [];
+    let haveCenter = false;
+    sounds.forEach(s => {
+      if (/rim|edge|side\s?stick|stick|边|沿/i.test(s.name)) roles[s.key] = "edge";
+      else if (/cent(er|re)|middle|head|心|面/i.test(s.name)) { roles[s.key] = "center"; haveCenter = true; }
+      else un.push(s);
+    });
+    un.forEach(s => {                      /* most frequent sound = the main stroke */
+      if (!haveCenter) { roles[s.key] = "center"; haveCenter = true; }
+      else roles[s.key] = "edge";
+    });
+  } else if (scheme === "hilo") {
+    let hasHi = false, hasLo = false;
+    const un = [];
+    sounds.forEach(s => {
+      if (/\bhigh\b|\bhi\b|高/i.test(s.name)) { roles[s.key] = "hi"; hasHi = true; }
+      else if (/\blow\b|\blo\b|低/i.test(s.name)) { roles[s.key] = "lo"; hasLo = true; }
+      else un.push(s);
+    });
+    if (un.length) {
+      if (hasHi && !hasLo) un.forEach(s => { roles[s.key] = "lo"; });
+      else if (hasLo && !hasHi) un.forEach(s => { roles[s.key] = "hi"; });
+      else if (!hasHi && !hasLo) {
+        const byPos = un.filter(s => s.pos != null).sort((a, b) => b.pos - a.pos);
+        if (byPos.length >= 2) {
+          roles[byPos[0].key] = "hi";
+          roles[byPos[byPos.length - 1].key] = "lo";
+        }
+      }
+    }
+  }
+  sounds.forEach(s => { if (!roles[s.key]) roles[s.key] = "x"; });
+  return roles;
+}
+
+/* the ×-cell contents of one hit. Sounds that draw the same mark are merged into
+   one × (a high+low chord becomes one × with a dot on each side); different marks
+   (e.g. centre + rim at once) stay stacked like a chord. */
+function percNums(part, n, roles) {
+  const groups = [];
+  (n.sounds || [{ inst: "", pos: null }]).forEach(s => {
+    const def = ROLE_DEF[roles[soundKey(part, s)]] || ROLE_DEF.x;
+    let g = groups.find(x => x.mark === def.mark);
+    if (!g) { g = { n: "×", oct: 0, acc: 0, mark: def.mark, up: 0, down: 0 }; groups.push(g); }
+    if (def.oct > 0) g.up = 1;
+    if (def.oct < 0) g.down = 1;
+  });
+  return groups;
+}
+
+/* small key under a percussion part's name, only for roles actually in use */
+function percLegend(part) {
+  const roles = (state.percRoles && state.percRoles[part.id]) || {};
+  const used = new Set();
+  (part.sounds || []).forEach(s => { const r = roles[s.key] || "x"; if (r !== "x") used.add(r); });
+  if (!used.size) return null;
+  const el = document.createElement("div");
+  el.className = "perc-legend";
+  el.innerHTML = "记号：" + ["center", "edge", "hi", "lo"].filter(r => used.has(r))
+    .map(r => '<span class="lg-item">' + ROLE_LEGEND[r][0] + " " + ROLE_LEGEND[r][1] + "</span>").join("");
+  return el;
+}
+
+/* ============ pitch → jianpu ============ */
+const LETTERS = ["C", "D", "E", "F", "G", "A", "B"];
+const L2SEMI = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 };
+const MAJ = [0, 2, 4, 5, 7, 9, 11];
+
+function pitchToJianpu(p, tonic) {
+  const li = LETTERS.indexOf(p.step);
+  const ti = LETTERS.indexOf(tonic.letter);
+  if (li < 0) return { n: "?", oct: 0, acc: 0 };
+  const diff = (p.oct * 7 + li) - (4 * 7 + ti);
+  const degree = ((diff % 7) + 7) % 7;
+  const octShift = Math.floor(diff / 7);
+  const semN = (p.oct + 1) * 12 + L2SEMI[p.step] + (p.alter || 0);
+  const semT = 5 * 12 + L2SEMI[tonic.letter] + (tonic.alter || 0);
+  const expected = semT + octShift * 12 + MAJ[degree];
+  return { n: degree + 1, oct: octShift, acc: semN - expected };
+}
+
+const ACC_GLYPH = { "1": "♯", "2": "𝄪", "-1": "♭", "-2": "𝄫", "0": "" };
+
+function keyLabel(tonic) {
+  const accTxt = tonic.alter === 1 ? "♯" : tonic.alter === -1 ? "♭" : "";
+  return "1=" + accTxt + tonic.letter;
+}
+
+/* rhythm: underline count / trailing dashes / augmentation dot */
+function rhythm(note, divisions) {
+  const typeLines = { "1024th": 6, "512th": 5, "256th": 4, "128th": 4, "64th": 4, "32nd": 3, "16th": 2, "eighth": 1 };
+  const t = note.type;
+  if (t) {
+    if (typeLines[t] != null) return { lines: typeLines[t], dashes: 0, dot: note.dots > 0 };
+    if (t === "quarter") return { lines: 0, dashes: 0, dot: note.dots > 0 };
+    if (t === "half") return { lines: 0, dashes: note.dots > 0 ? 2 : 1, dot: false };
+    if (t === "whole") return { lines: 0, dashes: note.dots > 0 ? 5 : 3, dot: false };
+    if (t === "breve") return { lines: 0, dashes: 7, dot: false };
+  }
+  const b = divisions > 0 ? note.dur / divisions : 1;
+  if (b >= 1.75) return { lines: 0, dashes: Math.max(1, Math.round(b) - 1), dot: false };
+  if (b >= 0.95) return { lines: 0, dashes: 0, dot: b > 1.3 };
+  if (b >= 0.7) return { lines: 1, dashes: 0, dot: true };
+  const lines = Math.max(1, Math.min(4, Math.round(Math.log2(1 / Math.max(b, 0.05)))));
+  return { lines, dashes: 0, dot: false };
+}
+
+/* ============ state ============ */
+const state = {
+  score: null,
+  fileName: "",
+  keyOverride: "auto",
+  selected: new Set(),
+  percRoles: {}   /* partId → { soundKey: role } — see "percussion" above */
+};
+
+/* ============ conversion of one part → cell model ============ */
+function convertPart(part, tonicOverride) {
+  let fifths = part.firstKey;
+  let tonic = tonicOverride || tonicFromFifths(fifths);
+  const family = part.family || "other";
+  const voiceSet = new Set();
+  part.measures.forEach(M => M.notes.forEach(n => voiceSet.add(n.voice)));
+  if (!voiceSet.size) voiceSet.add("1");
+  let voices = [...voiceSet].sort();
+  /* multi-staff parts often carry a second voice that is rests only: drop it
+     instead of printing a whole extra line of "0 0" (keep everything if no
+     voice has any note, e.g. a tacet part) */
+  if (voices.length > 1) {
+    const withNotes = voices.filter(v =>
+      part.measures.some(M => M.notes.some(n => n.voice === v && !n.rest)));
+    if (withNotes.length) voices = withNotes;
+  }
+
+  const lines = voices.map(v => ({ voice: v, measures: [] }));
+  const pendOrn = {}; /* per voice: grace note pending conversion to ornament */
+  const roles = (state.percRoles && state.percRoles[part.id]) || defaultPercRoles(part);
+
+  part.measures.forEach(M => {
+    const beatLen = (M.beatType === 8 && M.beats % 3 === 0 && M.beats > 3)
+      ? M.divisions * 1.5
+      : M.divisions * (4 / M.beatType);
+    const quartersInMeasure = M.beats * (4 / M.beatType);
+
+    M.marks.forEach(mk => {
+      if (mk.type === "key") {
+        fifths = mk.fifths;
+        if (!tonicOverride) tonic = tonicFromFifths(fifths);
+      }
+    });
+
+    lines.forEach(line => {
+      const cells = [];
+      M.marks.forEach(mk => {
+        if (mk.type === "key") cells.push({ kind: "mark", text: keyLabel(tonicOverride || tonicFromFifths(mk.fifths)) });
+        if (mk.type === "time") cells.push({ kind: "mark", text: mk.beats + "/" + mk.beatType });
+      });
+      const notes = M.notes.filter(n => n.voice === line.voice).sort((a, b) => a.start - b.start);
+      notes.forEach(n => {
+        /* 弹拨: grace → 3 bars (轮奏); 笛类: grace → tr — attached to the following main note */
+        if (n.grace && (family === "plucked" || family === "dizi")) {
+          pendOrn[line.voice] = family === "plucked" ? "trem" : "trill";
+          return;
+        }
+        const r = rhythm(n, M.divisions);
+        /* rests never use dashes: a full blank measure is "0 0", longer
+           partial rests repeat the zero instead of dashing */
+        let extraZeros = 0;
+        if (n.rest) {
+          const measureLen = M.divisions * quartersInMeasure;
+          const fullRest = n.restMeasure || (measureLen > 0 && n.dur >= measureLen - 1e-6);
+          if (fullRest) {
+            r.lines = 0; r.dot = false; r.dashes = 0;
+            extraZeros = 1;
+          } else if (r.dashes > 0) {
+            extraZeros = r.dashes;
+            r.dashes = 0;
+          }
+        }
+        const pend = n.grace ? null : pendOrn[line.voice];
+        if (!n.grace) pendOrn[line.voice] = null;
+        const cell = {
+          kind: n.rest ? "rest" : "note",
+          nums: n.rest ? [{ n: 0, oct: 0, acc: 0 }]
+            : n.unpitched ? percNums(part, n, roles)
+            : n.pitches
+              .map(p => pitchToJianpu(p, tonic))
+              .sort((a, b) => (a.oct * 7 + a.n) - (b.oct * 7 + b.n)),
+          lines: n.grace ? 0 : r.lines,
+          dot: r.dot,
+          grace: n.grace,
+          tieStart: n.tieStart || n.slurStart,
+          tieStop: n.tieStop || n.slurStop,
+          trill: n.trill || (!n.rest && pend === "trill"),
+          trem: n.trem || (!n.rest && pend === "trem" ? 3 : 0),
+          tup: n.tupRatio,
+          lyric: n.lyric,
+          beat: Math.floor((n.start + 1e-6) / Math.max(beatLen, 1))
+        };
+        cells.push(cell);
+        for (let i = 0; i < extraZeros; i++) {
+          cells.push({
+            kind: "rest", nums: [{ n: 0, oct: 0, acc: 0 }],
+            lines: 0, dot: false, grace: false,
+            tieStart: false, tieStop: false, trill: false, trem: 0,
+            tup: null, lyric: null, beat: cell.beat
+          });
+        }
+        for (let i = 0; i < r.dashes; i++) cells.push({ kind: "dash" });
+      });
+      line.measures.push({
+        cells,
+        repeatStart: M.repeatStart, repeatEnd: M.repeatEnd,
+        barRight: M.barRight, ending: M.ending, secStartBar: M.secStartBar
+      });
+    });
+  });
+  return { part, tonic0: tonicOverride || tonicFromFifths(part.firstKey), lines };
+}
+
+function tonicFromFifths(f) {
+  const t = FIFTHS_TONIC[String(Math.max(-7, Math.min(7, f)))] || ["C", 0];
+  return { letter: t[0], alter: t[1] };
+}
+
+/* ============ rendering ============ */
+const TEMPO_GLYPH = { whole: "𝅝", half: "𝅗𝅥", quarter: "♩", eighth: "♪", "16th": "𝅘𝅥𝅯" };
+
+function render() {
+  const sheet = $("#sheet");
+  sheet.innerHTML = "";
+  if (!state.score) return;
+  const { meta, parts } = state.score;
+  const shown = parts.filter(p => state.selected.has(p.id));
+  if (!shown.length) {
+    sheet.innerHTML = '<p style="color:#999;text-align:center">未勾选任何声部</p>';
+    sheet.style.display = "block";
+    return;
+  }
+
+  const override = state.keyOverride === "auto" ? null : parseKeyOption(state.keyOverride);
+
+  if (meta.title) {
+    const h = document.createElement("h2");
+    h.className = "s-title";
+    h.textContent = meta.title;
+    sheet.appendChild(h);
+  }
+
+  const first = shown.find(p => !p.percussion) || shown[0];
+  const head = document.createElement("div");
+  head.className = "s-head";
+  const t0 = override || tonicFromFifths(first.firstKey);
+  let keyHtml = '<span class="s-key">' + (first.percussion ? "" : keyLabel(t0) + " ") +
+    '<span class="ts">' + first.firstTime.beats + "/" + first.firstTime.beatType + "</span>";
+  if (first.tempo) {
+    keyHtml += ' <span class="tempo">' + (TEMPO_GLYPH[first.tempo.unit] || "♩") +
+      (first.tempo.dotted ? "·" : "") + " = " + Math.round(first.tempo.pm) + "</span>";
+  }
+  keyHtml += "</span>";
+  head.innerHTML = keyHtml + (meta.composer ? '<span class="s-composer"></span>' : "");
+  if (meta.composer) head.querySelector(".s-composer").textContent = meta.composer + " 曲";
+  sheet.appendChild(head);
+
+  shown.forEach(p => {
+    const conv = convertPart(p, override);
+    const sec = document.createElement("section");
+    sec.className = "part";
+    if (shown.length > 1 || parts.length > 1) {
+      const nm = document.createElement("div");
+      nm.className = "part-name";
+      nm.textContent = p.name;
+      sec.appendChild(nm);
+      const lg = p.percussion ? percLegend(p) : null;
+      if (lg) sec.appendChild(lg);
+    }
+    /* group measures by the score-wide section boundaries (same for every part) */
+    const starts = state.score.sectionStarts || [];
+    const sections = [];
+    p.measures.forEach((M, i) => {
+      if (i === 0 || starts[i]) sections.push([]);
+      sections[sections.length - 1].push(i);
+    });
+
+    sections.forEach((idxs, si) => {
+      const i0 = idxs[0];
+      const words = (state.score.secWords && state.score.secWords[i0]) || [];
+      const tempoMark = si > 0 ? (state.score.secTempo && state.score.secTempo[i0]) : null;
+      let secHead = null;
+      if (words.length || tempoMark) {
+        secHead = document.createElement("div");
+        secHead.className = "sec-head";
+        words.forEach(wt => {
+          const w = document.createElement("span");
+          w.textContent = wt;
+          secHead.appendChild(w);
+        });
+        if (tempoMark) {
+          const t = document.createElement("span");
+          t.className = "tempo";
+          t.textContent = (TEMPO_GLYPH[tempoMark.unit] || "♩") +
+            (tempoMark.dotted ? "·" : "") + " = " + Math.round(tempoMark.pm);
+          secHead.appendChild(t);
+        }
+        sec.appendChild(secHead);
+      }
+      conv.lines.forEach((line, li) => {
+        if (conv.lines.length > 1) {
+          const vn = document.createElement("div");
+          vn.className = "voice-name";
+          vn.textContent = "声部 " + (li + 1);
+          sec.appendChild(vn);
+        }
+        const lineEl = document.createElement("div");
+        lineEl.className = "line" + (si > 0 && !secHead ? " newsec" : "");
+        idxs.forEach(i => {
+          const rawM = p.measures[i];
+          const raw = parseInt(rawM.num, 10);
+          const mn = isNaN(raw) ? i + 1 : raw;
+          let lbl = null;
+          if (li === 0 && i !== idxs[0]) {
+            lbl = rawM.words.slice();
+            const isTop = p === state.score.parts[0];
+            if (!isTop && state.score.sysWords[i]) {
+              state.score.sysWords[i].forEach(w => { if (!lbl.includes(w)) lbl.push(w); });
+            }
+            const tm = rawM.tempoMark || (!isTop ? state.score.sysTempo[i] : null);
+            if (tm) {
+              lbl.push((TEMPO_GLYPH[tm.unit] || "♩") +
+                (tm.dotted ? "·" : "") + "=" + Math.round(tm.pm));
+            }
+          }
+          lineEl.appendChild(renderMeasure(line.measures[i],
+            mn > 0 && mn % 5 === 0 ? String(mn) : null,
+            lbl && lbl.length ? lbl : null));
+        });
+        sec.appendChild(lineEl);
+      });
+    });
+    sheet.appendChild(sec);
+  });
+
+  sheet.style.display = "block";
+  decorateAll();
+}
+
+function parseKeyOption(v) {
+  const m = v.match(/^([#b]?)([A-G])$/);
+  if (!m) return null;
+  return { letter: m[2], alter: m[1] === "#" ? 1 : m[1] === "b" ? -1 : 0 };
+}
+
+function renderMeasure(M, mnum, words) {
+  const el = document.createElement("span");
+  el.className = "measure";
+  if (mnum) {
+    const mn = document.createElement("span");
+    mn.className = "mnum";
+    mn.textContent = mnum;
+    el.appendChild(mn);
+  }
+  if (words) {
+    const w = document.createElement("span");
+    w.className = "mword";
+    w.textContent = words.join(" ");
+    if (mnum) w.style.left = "1.8em";
+    el.appendChild(w);
+  }
+  if (M.repeatStart) el.classList.add("repeat-start");
+  if (M.repeatEnd) el.classList.add("repeat-end");
+  if (M.barRight === "final") el.classList.add("final");
+  if (M.barRight === "double") el.classList.add("double");
+  if (M.secStartBar && !M.repeatStart) el.classList.add("sec-start");
+  el._cells = [];
+
+  if (M.ending) {
+    const v = document.createElement("span");
+    v.className = "volta";
+    v.textContent = M.ending.split(",")[0] + ".";
+    el.appendChild(v);
+  }
+
+  M.cells.forEach(c => {
+    const cell = document.createElement("span");
+    cell.className = "cell";
+    if (c.kind === "mark") {
+      cell.classList.add("markcell");
+      cell.textContent = c.text;
+      el.appendChild(cell);
+      return;
+    }
+    if (c.kind === "dash") {
+      cell.innerHTML = '<span class="da"></span><span class="num">—</span><span class="ub"></span><span class="db"></span>';
+      el.appendChild(cell);
+      return;
+    }
+    if (c.grace) cell.classList.add("grace");
+
+    const da = document.createElement("span"); da.className = "da";
+    const db = document.createElement("span"); db.className = "db";
+    const numEl = document.createElement("span"); numEl.className = "num";
+
+    /* chord: stack numbers, lowest last (read bottom-up) */
+    const ns = c.nums.slice().reverse();
+    ns.forEach((jp, i) => {
+      const span = document.createElement("span");
+      if (ns.length > 1) span.className = "chordnum";
+      let html = "";
+      if (jp.acc) html += '<span class="acc">' + (ACC_GLYPH[String(jp.acc)] || "") + "</span>";
+      html += jp.mark === "c" ? '<span class="pm-c">×</span>' : jp.n;
+      span.innerHTML = html;
+      numEl.appendChild(span);
+    });
+    if (c.dot) {
+      const d = document.createElement("span");
+      d.className = "augdot";
+      d.textContent = "·";
+      numEl.appendChild(d);
+    }
+    /* octave dots: use extremes across chord */
+    const maxOct = Math.max(...c.nums.map(x => x.up != null ? x.up : x.oct));
+    const minOct = Math.min(...c.nums.map(x => x.down != null ? -x.down : x.oct));
+    for (let i = 0; i < Math.min(3, Math.max(0, maxOct)); i++) da.appendChild(dot());
+    for (let i = 0; i < Math.min(3, Math.max(0, -minOct)); i++) db.appendChild(dot());
+
+    const ub = document.createElement("span"); ub.className = "ub";
+    cell.appendChild(da); cell.appendChild(numEl); cell.appendChild(ub); cell.appendChild(db);
+    if (c.lyric) {
+      const ly = document.createElement("span");
+      ly.className = "lyr";
+      ly.textContent = c.lyric;
+      cell.appendChild(ly);
+    }
+    cell._data = c;
+    cell._num = numEl;
+    el.appendChild(cell);
+    el._cells.push(cell);
+  });
+  return el;
+}
+
+function dot() {
+  const d = document.createElement("span");
+  d.className = "octdot";
+  return d;
+}
+
+/* underlines, ties, tuplet labels — measured overlays.
+   Two-phase (read all geometry, then write all overlays) so the browser lays
+   out the page once instead of once per measure — matters on full-length scores. */
+function decorateAll() {
+  const measures = [...document.querySelectorAll(".measure")].filter(m => m._cells && m._cells.length);
+  document.querySelectorAll(".uline,.tiearc,.tuplabel,.orn").forEach(x => x.remove());
+
+  /* phase 1: read-only geometry pass */
+  const jobs = [];
+  measures.forEach(m => {
+    const mRect = m.getBoundingClientRect();
+    const fs = parseFloat(getComputedStyle(m).fontSize);
+    const gap = Math.max(2.5, fs * 0.14);
+    const R = new Map();
+    m._cells.forEach(c => R.set(c, { num: c._num.getBoundingClientRect(), cellTop: c.getBoundingClientRect().top }));
+
+    /* underline runs */
+    for (let L = 1; L <= 4; L++) {
+      let run = [];
+      const flush = () => {
+        if (run.length) {
+          const r1 = R.get(run[0]).num;
+          const r2 = R.get(run[run.length - 1]).num;
+          const bottom = Math.max(...run.map(c => R.get(c).num.bottom));
+          jobs.push({ m, cls: "uline", left: r1.left - mRect.left, width: r2.right - r1.left, top: bottom - mRect.top + 1 + (L - 1) * gap });
+        }
+        run = [];
+      };
+      let prevBeat = null;
+      m._cells.forEach(c => {
+        const d = c._data;
+        if (!d || d.grace || d.lines < L) { flush(); prevBeat = null; return; }
+        if (prevBeat !== null && d.beat !== prevBeat) flush();
+        run.push(c);
+        prevBeat = d.beat;
+      });
+      flush();
+    }
+
+    /* tuplet labels */
+    let trun = [];
+    const tflush = () => {
+      if (trun.length > 1) {
+        const r1 = R.get(trun[0]).num;
+        const r2 = R.get(trun[trun.length - 1]).num;
+        jobs.push({ m, cls: "tuplabel", text: String(trun[0]._data.tup), left: (r1.left + r2.right) / 2 - mRect.left, topEm: "-0.35em" });
+      }
+      trun = [];
+    };
+    m._cells.forEach(c => {
+      if (c._data && c._data.tup) trun.push(c); else tflush();
+    });
+    tflush();
+
+    /* ornaments: trill (tr) / tremolo bars */
+    m._cells.forEach(c => {
+      const d = c._data;
+      if (!d || (!d.trill && !d.trem)) return;
+      const g = R.get(c);
+      const cx = g.num.left - mRect.left + g.num.width / 2;
+      const cellTop = g.cellTop - mRect.top;
+      if (d.trill) jobs.push({ m, cls: "orn trilltxt", text: "tr", left: cx, top: cellTop - fs * 0.6 });
+      else jobs.push({ m, cls: "orn tremb", bars: Math.max(1, Math.min(4, d.trem)), left: cx, top: cellTop - fs * 0.5 });
+    });
+
+    /* tie / slur arcs */
+    for (let i = 0; i < m._cells.length; i++) {
+      const c = m._cells[i];
+      if (!c._data || !c._data.tieStart) continue;
+      let end = null;
+      for (let j = i + 1; j < m._cells.length; j++) {
+        if (m._cells[j]._data && m._cells[j]._data.tieStop) { end = m._cells[j]; break; }
+        if (m._cells[j]._data && m._cells[j]._data.tieStart) break;
+      }
+      const r1 = R.get(c).num;
+      const left = r1.left - mRect.left + r1.width * 0.3;
+      let right;
+      if (end) {
+        const r2 = R.get(end).num;
+        right = r2.left - mRect.left + r2.width * 0.7;
+      } else {
+        right = mRect.width - 2; /* continues into next measure */
+      }
+      jobs.push({ m, cls: "tiearc", left, width: Math.max(right - left, fs * 0.5), top: r1.top - mRect.top - fs * 0.12 });
+    }
+  });
+
+  /* phase 2: write all overlays */
+  jobs.forEach(j => {
+    const s = document.createElement("span");
+    s.className = j.cls;
+    if (j.text) s.textContent = j.text;
+    if (j.bars) for (let i = 0; i < j.bars; i++) s.appendChild(document.createElement("i"));
+    s.style.left = j.left + "px";
+    s.style.top = j.topEm ? j.topEm : j.top + "px";
+    if (j.width != null) s.style.width = j.width + "px";
+    j.m.appendChild(s);
+  });
+}
+
+let resizeTimer = null;
+window.addEventListener("resize", () => {
+  clearTimeout(resizeTimer);
+  resizeTimer = setTimeout(decorateAll, 120);
+});
+if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => decorateAll());
+
+/* ============ UI wiring ============ */
+const KEY_OPTIONS = ["C", "bD", "D", "bE", "E", "F", "#F", "G", "bA", "A", "bB", "B"];
+
+function buildControls() {
+  const { parts } = state.score;
+  $("#filelabel").innerHTML = "已载入 <b></b>";
+  $("#filelabel b").textContent = state.fileName;
+
+  const keysel = $("#keysel");
+  keysel.innerHTML = "";
+  const auto = document.createElement("option");
+  auto.value = "auto";
+  auto.textContent = "自动（" + keyLabel(tonicFromFifths(parts[0].firstKey)) + "）";
+  keysel.appendChild(auto);
+  KEY_OPTIONS.forEach(k => {
+    const o = document.createElement("option");
+    o.value = k;
+    o.textContent = "1=" + k.replace("#", "♯").replace("b", "♭");
+    keysel.appendChild(o);
+  });
+  keysel.value = state.keyOverride = "auto";
+
+  /* percussion roles: guess from instrument names / usage, user can override below */
+  state.percRoles = {};
+  parts.forEach(p => { if (p.sounds && p.sounds.length) state.percRoles[p.id] = defaultPercRoles(p); });
+
+  const row = $("#partrow");
+  const checks = $("#partchecks");
+  checks.innerHTML = "";
+  state.selected = new Set(parts.map(p => p.id));
+  if (parts.length > 1) {
+    row.style.display = "flex";
+    parts.forEach(p => {
+      const lab = document.createElement("label");
+      const cb = document.createElement("input");
+      cb.type = "checkbox";
+      cb.checked = state.selected.has(p.id);
+      cb.addEventListener("change", () => {
+        if (cb.checked) state.selected.add(p.id); else state.selected.delete(p.id);
+        buildPercRow();
+        render();
+      });
+      lab.appendChild(cb);
+      lab.appendChild(document.createTextNode(p.name + (p.percussion ? "（打击乐）" : "")));
+      checks.appendChild(lab);
+    });
+  } else {
+    row.style.display = "none";
+  }
+  buildPercRow();
+  $("#controls").style.display = "block";
+}
+
+/* one dropdown per sound of every *shown* percussion part that has something to
+   tell apart (several sounds, or a drum / wood block that gets marks) */
+function buildPercRow() {
+  const row = $("#percrow"), box = $("#percgrps");
+  box.innerHTML = "";
+  const list = state.score.parts.filter(p => state.selected.has(p.id) && p.percussion && p.sounds &&
+    p.sounds.length && (p.sounds.length > 1 || percScheme(p) !== "plain"));
+  list.forEach(p => {
+    const g = document.createElement("span");
+    g.className = "percgrp";
+    const nm = document.createElement("b");
+    nm.textContent = p.name;
+    g.appendChild(nm);
+    p.sounds.forEach(s => {
+      const lab = document.createElement("label");
+      lab.className = "ctl";
+      lab.appendChild(document.createTextNode(soundLabel(p, s)));
+      const sel = document.createElement("select");
+      ROLE_OPTIONS.forEach(([v, t]) => {
+        const o = document.createElement("option");
+        o.value = v; o.textContent = t;
+        sel.appendChild(o);
+      });
+      sel.value = state.percRoles[p.id][s.key] || "x";
+      sel.addEventListener("change", () => { state.percRoles[p.id][s.key] = sel.value; render(); });
+      lab.appendChild(sel);
+      g.appendChild(lab);
+    });
+    box.appendChild(g);
+  });
+  row.style.display = list.length ? "flex" : "none";
+}
+
+function showError(msg) {
+  const e = $("#error");
+  e.textContent = msg;
+  e.style.display = "block";
+}
+function clearError() { $("#error").style.display = "none"; }
+
+async function loadFile(file) {
+  clearError();
+  try {
+    const buf = await file.arrayBuffer();
+    const u8 = new Uint8Array(buf);
+    let text;
+    if (u8[0] === 0x50 && u8[1] === 0x4B) {
+      text = await unzipMxl(buf);
+    } else {
+      text = new TextDecoder().decode(u8);
+    }
+    const doc = new DOMParser().parseFromString(text, "application/xml");
+    state.score = parseScore(doc);
+    state.fileName = file.name;
+    buildControls();
+    $("#dropzone").style.display = "none";
+    render();
+  } catch (err) {
+    showError("转换失败：" + err.message);
+  }
+}
+
+const dz = $("#dropzone");
+dz.addEventListener("click", e => {
+  if (e.target.id !== "samplebtn") $("#fileinput").click();
+});
+dz.addEventListener("dragover", e => { e.preventDefault(); dz.classList.add("dragover"); });
+dz.addEventListener("dragleave", () => dz.classList.remove("dragover"));
+dz.addEventListener("drop", e => {
+  e.preventDefault();
+  dz.classList.remove("dragover");
+  if (e.dataTransfer.files[0]) loadFile(e.dataTransfer.files[0]);
+});
+$("#fileinput").addEventListener("change", e => {
+  if (e.target.files[0]) loadFile(e.target.files[0]);
+});
+$("#reselect").addEventListener("click", () => {
+  $("#dropzone").style.display = "block";
+  $("#fileinput").value = "";
+  $("#fileinput").click();
+});
+$("#keysel").addEventListener("change", e => { state.keyOverride = e.target.value; render(); });
+$("#sizesel").addEventListener("change", e => {
+  document.documentElement.style.setProperty("--notesize", e.target.value);
+  decorateAll();
+});
+$("#printbtn").addEventListener("click", () => window.print());
+function buildSheetHtml() {
+  const esc = s => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  const title = (state.score.meta.title || "乐谱") + "·简谱";
+  const css = document.getElementById("appcss").textContent;
+  const html = '<!doctype html><html data-theme="light"><head><meta charset="utf-8"><title>' +
+    esc(title) + "</title><style>" + css +
+    "\nbody{background:#fff;margin:0;padding:28px;}" +
+    "#sheet{display:block;border:none;box-shadow:none;max-width:900px;margin:0 auto;}" +
+    "</style></head><body>" + $("#sheet").outerHTML + "</body></html>";
+  return { title, blob: new Blob(["﻿", html], { type: "text/html;charset=utf-8" }) };
+}
+
+$("#dlbtn").addEventListener("click", async () => {
+  if (!state.score) return;
+  const msg = $("#dlmsg");
+  const { title, blob } = buildSheetHtml();
+
+  /* 1) native save dialog (Chromium) — works even where sandboxed downloads don't */
+  if (window.showSaveFilePicker) {
+    try {
+      const h = await window.showSaveFilePicker({
+        suggestedName: title + ".html",
+        types: [{ description: "网页文件", accept: { "text/html": [".html"] } }]
+      });
+      const w = await h.createWritable();
+      await w.write(blob);
+      await w.close();
+      msg.style.display = "inline";
+      msg.textContent = "已保存 " + title + ".html";
+      return;
+    } catch (e) {
+      if (e && e.name === "AbortError") return; /* user cancelled the dialog */
+    }
+  }
+
+  /* 2) plain anchor download */
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = title + ".html";
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 10000);
+  msg.style.display = "inline";
+  msg.textContent = "已尝试下载 " + title + ".html——如果没有反应，说明当前嵌入页面禁止下载，请改用本地版转换器";
+});
+$("#samplebtn").addEventListener("click", e => {
+  e.stopPropagation();
+  const blob = new Blob([SAMPLE_XML], { type: "application/xml" });
+  const f = new File([blob], "示例·茉莉花片段.musicxml");
+  loadFile(f);
+});
+
+/* ============ sample score (demo of every supported feature) ============ */
+const SAMPLE_XML = `<?xml version="1.0" encoding="UTF-8"?>
+<score-partwise version="3.1">
+  <movement-title>茉莉花（示例片段）</movement-title>
+  <identification><creator type="composer">江苏民歌</creator></identification>
+  <part-list>
+    <score-part id="P1"><part-name>竹笛</part-name></score-part>
+    <score-part id="P2"><part-name>琵琶</part-name></score-part>
+    <score-part id="P3"><part-name>二胡</part-name></score-part>
+    <score-part id="P4"><part-name>大鼓</part-name></score-part>
+  </part-list>
+  <part id="P1">
+    <measure number="1">
+      <attributes>
+        <divisions>12</divisions>
+        <key><fifths>1</fifths></key>
+        <time><beats>4</beats><beat-type>4</beat-type></time>
+      </attributes>
+      <direction><direction-type><metronome><beat-unit>quarter</beat-unit><per-minute>92</per-minute></metronome></direction-type></direction>
+      <note><pitch><step>B</step><octave>4</octave></pitch><duration>12</duration><type>quarter</type><lyric><text>好</text></lyric></note>
+      <note><pitch><step>B</step><octave>4</octave></pitch><duration>6</duration><type>eighth</type><lyric><text>一</text></lyric></note>
+      <note><pitch><step>D</step><octave>5</octave></pitch><duration>6</duration><type>eighth</type><lyric><text>朵</text></lyric></note>
+      <note><pitch><step>E</step><octave>5</octave></pitch><duration>6</duration><type>eighth</type><lyric><text>茉</text></lyric></note>
+      <note><pitch><step>G</step><octave>5</octave></pitch><duration>6</duration><type>eighth</type><lyric><text>莉</text></lyric></note>
+      <note><pitch><step>G</step><octave>5</octave></pitch><duration>12</duration><type>quarter</type><lyric><text>花</text></lyric></note>
+    </measure>
+    <measure number="2">
+      <note><pitch><step>E</step><octave>5</octave></pitch><duration>6</duration><type>eighth</type></note>
+      <note><pitch><step>D</step><octave>5</octave></pitch><duration>6</duration><type>eighth</type></note>
+      <note><pitch><step>D</step><octave>5</octave></pitch><duration>18</duration><type>quarter</type><dot/></note>
+      <note><pitch><step>E</step><octave>5</octave></pitch><duration>6</duration><type>eighth</type></note>
+      <note><pitch><step>D</step><octave>5</octave></pitch><duration>12</duration><type>quarter</type></note>
+    </measure>
+    <measure number="3">
+      <note><rest/><duration>12</duration><type>quarter</type></note>
+      <note><pitch><step>B</step><octave>4</octave></pitch><duration>3</duration><type>16th</type></note>
+      <note><pitch><step>A</step><octave>4</octave></pitch><duration>3</duration><type>16th</type></note>
+      <note><pitch><step>B</step><octave>4</octave></pitch><duration>3</duration><type>16th</type></note>
+      <note><pitch><step>D</step><octave>5</octave></pitch><duration>3</duration><type>16th</type></note>
+      <note><pitch><step>E</step><octave>5</octave></pitch><duration>12</duration><type>quarter</type></note>
+      <note><grace/><pitch><step>D</step><octave>5</octave></pitch><type>eighth</type></note>
+      <note><pitch><step>B</step><octave>4</octave></pitch><duration>12</duration><type>quarter</type></note>
+    </measure>
+    <measure number="4">
+      <note><pitch><step>C</step><alter>1</alter><octave>5</octave></pitch><duration>12</duration><type>quarter</type></note>
+      <note><pitch><step>D</step><octave>5</octave></pitch><duration>12</duration><type>quarter</type></note>
+      <note><pitch><step>E</step><octave>5</octave></pitch><duration>12</duration><type>quarter</type></note>
+      <note><pitch><step>G</step><octave>5</octave></pitch><duration>12</duration><type>quarter</type></note>
+      <barline location="right"><bar-style>light-light</bar-style></barline>
+    </measure>
+    <measure number="5">
+      <direction><direction-type><words>二、轻快地</words></direction-type></direction>
+      <direction><direction-type><metronome><beat-unit>quarter</beat-unit><per-minute>112</per-minute></metronome></direction-type></direction>
+      <note><pitch><step>E</step><octave>5</octave></pitch><duration>4</duration><type>eighth</type><time-modification><actual-notes>3</actual-notes><normal-notes>2</normal-notes></time-modification></note>
+      <note><pitch><step>D</step><octave>5</octave></pitch><duration>4</duration><type>eighth</type><time-modification><actual-notes>3</actual-notes><normal-notes>2</normal-notes></time-modification></note>
+      <note><pitch><step>E</step><octave>5</octave></pitch><duration>4</duration><type>eighth</type><time-modification><actual-notes>3</actual-notes><normal-notes>2</normal-notes></time-modification></note>
+      <note><pitch><step>D</step><octave>5</octave></pitch><duration>12</duration><type>quarter</type></note>
+      <note><pitch><step>D</step><octave>5</octave></pitch><duration>24</duration><type>half</type><tie type="start"/></note>
+    </measure>
+    <measure number="6">
+      <note><pitch><step>D</step><octave>5</octave></pitch><duration>24</duration><type>half</type><tie type="stop"/></note>
+      <note><pitch><step>E</step><octave>4</octave></pitch><duration>12</duration><type>quarter</type></note>
+      <note><pitch><step>D</step><octave>4</octave></pitch><duration>12</duration><type>quarter</type></note>
+    </measure>
+    <measure number="7">
+      <note><pitch><step>G</step><octave>4</octave></pitch><duration>48</duration><type>whole</type></note>
+      <barline location="right"><bar-style>light-heavy</bar-style></barline>
+    </measure>
+  </part>
+  <part id="P2">
+    <measure number="1">
+      <attributes>
+        <divisions>12</divisions>
+        <key><fifths>1</fifths></key>
+        <time><beats>4</beats><beat-type>4</beat-type></time>
+      </attributes>
+      <note><grace/><pitch><step>B</step><octave>4</octave></pitch><type>eighth</type></note>
+      <note><pitch><step>D</step><octave>5</octave></pitch><duration>24</duration><type>half</type></note>
+      <note><pitch><step>B</step><octave>4</octave></pitch><duration>24</duration><type>half</type></note>
+    </measure>
+    <measure number="2">
+      <note><pitch><step>G</step><octave>4</octave></pitch><duration>48</duration><type>whole</type><notations><ornaments><tremolo type="single">3</tremolo></ornaments></notations></note>
+    </measure>
+    <measure number="3">
+      <note><pitch><step>E</step><octave>4</octave></pitch><duration>24</duration><type>half</type></note>
+      <note><pitch><step>A</step><octave>4</octave></pitch><duration>24</duration><type>half</type></note>
+    </measure>
+    <measure number="4">
+      <note><pitch><step>A</step><octave>4</octave></pitch><duration>24</duration><type>half</type></note>
+      <note><pitch><step>D</step><octave>5</octave></pitch><duration>24</duration><type>half</type></note>
+      <barline location="right"><bar-style>light-light</bar-style></barline>
+    </measure>
+    <measure number="5">
+      <note><grace/><pitch><step>C</step><octave>5</octave></pitch><type>eighth</type></note>
+      <note><pitch><step>D</step><octave>5</octave></pitch><duration>48</duration><type>whole</type></note>
+    </measure>
+    <measure number="6">
+      <note><pitch><step>D</step><octave>5</octave></pitch><duration>24</duration><type>half</type></note>
+      <note><pitch><step>E</step><octave>5</octave></pitch><duration>24</duration><type>half</type></note>
+    </measure>
+    <measure number="7">
+      <note><pitch><step>G</step><octave>4</octave></pitch><duration>48</duration><type>whole</type></note>
+      <barline location="right"><bar-style>light-heavy</bar-style></barline>
+    </measure>
+  </part>
+  <part id="P3">
+    <measure number="1">
+      <attributes>
+        <divisions>12</divisions>
+        <key><fifths>1</fifths></key>
+        <time><beats>4</beats><beat-type>4</beat-type></time>
+      </attributes>
+      <note><pitch><step>G</step><octave>3</octave></pitch><duration>24</duration><type>half</type></note>
+      <note><pitch><step>B</step><octave>3</octave></pitch><duration>24</duration><type>half</type></note>
+    </measure>
+    <measure number="2">
+      <note><pitch><step>D</step><octave>4</octave></pitch><duration>48</duration><type>whole</type></note>
+    </measure>
+    <measure number="3">
+      <note><pitch><step>E</step><octave>4</octave></pitch><duration>24</duration><type>half</type></note>
+      <note><pitch><step>A</step><octave>3</octave></pitch><duration>24</duration><type>half</type></note>
+    </measure>
+    <measure number="4">
+      <note><pitch><step>A</step><octave>3</octave></pitch><duration>24</duration><type>half</type></note>
+      <note><pitch><step>D</step><octave>4</octave></pitch><duration>24</duration><type>half</type></note>
+      <barline location="right"><bar-style>light-light</bar-style></barline>
+    </measure>
+    <measure number="5">
+      <note><pitch><step>D</step><octave>4</octave></pitch><duration>48</duration><type>whole</type></note>
+    </measure>
+    <measure number="6">
+      <note><pitch><step>D</step><octave>4</octave></pitch><duration>24</duration><type>half</type></note>
+      <note><pitch><step>E</step><octave>4</octave></pitch><duration>24</duration><type>half</type></note>
+    </measure>
+    <measure number="7">
+      <note><pitch><step>G</step><octave>3</octave></pitch><duration>48</duration><type>whole</type></note>
+      <barline location="right"><bar-style>light-heavy</bar-style></barline>
+    </measure>
+  </part>
+  <part id="P4">
+    <measure number="1">
+      <attributes><divisions>12</divisions><time><beats>4</beats><beat-type>4</beat-type></time></attributes>
+      <note><unpitched><display-step>E</display-step><display-octave>4</display-octave></unpitched><duration>12</duration><type>quarter</type></note>
+      <note><rest/><duration>12</duration><type>quarter</type></note>
+      <note><unpitched><display-step>E</display-step><display-octave>4</display-octave></unpitched><duration>6</duration><type>eighth</type></note>
+      <note><unpitched><display-step>E</display-step><display-octave>4</display-octave></unpitched><duration>6</duration><type>eighth</type></note>
+      <note><unpitched><display-step>E</display-step><display-octave>4</display-octave></unpitched><duration>12</duration><type>quarter</type></note>
+    </measure>
+    <measure number="2">
+      <note><unpitched><display-step>E</display-step><display-octave>4</display-octave></unpitched><duration>24</duration><type>half</type></note>
+      <note><rest/><duration>24</duration><type>half</type></note>
+    </measure>
+    <measure number="3">
+      <note><unpitched><display-step>E</display-step><display-octave>4</display-octave></unpitched><duration>12</duration><type>quarter</type></note>
+      <note><unpitched><display-step>E</display-step><display-octave>4</display-octave></unpitched><duration>12</duration><type>quarter</type></note>
+      <note><rest/><duration>12</duration><type>quarter</type></note>
+      <note><unpitched><display-step>E</display-step><display-octave>4</display-octave></unpitched><duration>12</duration><type>quarter</type></note>
+    </measure>
+    <measure number="4">
+      <note><unpitched><display-step>E</display-step><display-octave>4</display-octave></unpitched><duration>24</duration><type>half</type></note>
+      <note><unpitched><display-step>E</display-step><display-octave>4</display-octave></unpitched><duration>24</duration><type>half</type></note>
+      <barline location="right"><bar-style>light-light</bar-style></barline>
+    </measure>
+    <measure number="5">
+      <note><unpitched><display-step>E</display-step><display-octave>4</display-octave></unpitched><duration>48</duration><type>whole</type></note>
+    </measure>
+    <measure number="6">
+      <note><unpitched><display-step>E</display-step><display-octave>4</display-octave></unpitched><duration>24</duration><type>half</type></note>
+      <note><unpitched><display-step>E</display-step><display-octave>4</display-octave></unpitched><duration>24</duration><type>half</type></note>
+    </measure>
+    <measure number="7">
+      <note><unpitched><display-step>E</display-step><display-octave>4</display-octave></unpitched><duration>48</duration><type>whole</type></note>
+      <barline location="right"><bar-style>light-heavy</bar-style></barline>
+    </measure>
+  </part>
+</score-partwise>`;
+
+/* ============ embedded score (used by scripts/build_jianpu.py) ============
+   build_jianpu.py can bake a score into this page as base64 inside
+   <script id="embedded-score" data-name=".." data-parts="..">. It is loaded as
+   soon as the page opens. data-parts (optional) = comma separated part ids or
+   names (substring match) to pre-tick; everything else stays adjustable. */
+(function () {
+  const el = document.getElementById("embedded-score");
+  if (!el) return;
+  const run = async () => {
+    try {
+      const bin = atob(el.textContent.replace(/\s+/g, ""));
+      const u8 = new Uint8Array(bin.length);
+      for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
+      await loadFile(new File([u8], el.getAttribute("data-name") || "score.mxl"));
+      const want = (el.getAttribute("data-parts") || "").split(",").map(x => x.trim().toLowerCase()).filter(Boolean);
+      if (want.length && state.score) {
+        const hit = state.score.parts.filter(p =>
+          want.some(w => p.id.toLowerCase() === w || p.name.toLowerCase().includes(w)));
+        if (hit.length) {
+          state.selected = new Set(hit.map(p => p.id));
+          document.querySelectorAll("#partchecks input").forEach((cb, i) => {
+            cb.checked = state.selected.has(state.score.parts[i].id);
+          });
+          buildPercRow();
+          render();
+        }
+      }
+    } catch (e) {
+      showError("内置乐谱读取失败：" + e.message);
+    }
+  };
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", run);
+  else run();
+})();
+</script>
+</body>
+</html>

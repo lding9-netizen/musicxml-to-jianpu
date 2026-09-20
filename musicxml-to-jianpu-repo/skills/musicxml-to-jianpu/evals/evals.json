@@ -1,0 +1,29 @@
+{
+  "skill_name": "musicxml-to-jianpu",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "这是我们乐团的总谱（mxl 文件），帮我转成简谱。",
+      "expected_output": "运行 scripts/build_jianpu.py 生成 HTML；简要说明曲名、声部数、调与拍号、整首休止的声部等；用 present_files 交付 .html；说明勾选声部、下载谱面、⌘P/Ctrl+P 打印的用法。",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "我是二胡，能不能只给我做一份二胡的分谱？文件在上面。",
+      "expected_output": "使用 --parts \"二胡\" 预选声部；页面打开时只勾选二胡；提醒用户可用「下载谱面」得到独立的二胡分谱文件后打印。",
+      "files": []
+    },
+    {
+      "id": 3,
+      "prompt": "这是我扫描的 PDF 乐谱，转成简谱吧。",
+      "expected_output": "不伪造转换结果；说明本工具读取的是 MusicXML，PDF 需要先经乐谱识别（OMR）转成 MusicXML（结果需校对），或从原打谱软件导出 MusicXML。",
+      "files": []
+    },
+    {
+      "id": 4,
+      "prompt": "谱子里的打击乐部分，小鼓有的音我想让它变成鼓边，怎么弄？",
+      "expected_output": "说明勾选打击乐声部后，页面里有「打击乐记号」一行，每个音色一个下拉框，可改为鼓心、鼓边、高、低或普通；鼓心为带圈的 ×，鼓边为普通 ×。",
+      "files": []
+    }
+  ]
+}
