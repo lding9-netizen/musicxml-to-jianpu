@@ -4,7 +4,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>五线谱 → 简谱转换器</title>
+<title>五线谱 ⇄ 简谱转换器</title>
 <style>:root{color-scheme:light}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#faf9f5;color:#141413}img{max-width:100%}</style>
 <style id="appcss">
   :root {
@@ -273,10 +273,169 @@
   footer.help ul { margin: 0; padding-left: 18px; }
   footer.help li { margin: 3px 0; }
 
+  .product-meta {
+    display: flex; flex-wrap: wrap; justify-content: space-between;
+    gap: 4px 18px; margin-top: 12px; color: var(--muted); font-size: 12px;
+  }
+  .tabs {
+    display: flex; gap: 6px; margin: 26px 0 0;
+    border-bottom: 1px solid var(--line);
+  }
+  .tab {
+    padding: 10px 14px; margin-bottom: -1px;
+    color: var(--muted); background: transparent; border: 1px solid transparent;
+    border-bottom: 2px solid transparent; font: inherit; cursor: pointer;
+  }
+  .tab:hover { color: var(--text); }
+  .tab[aria-selected="true"] {
+    color: var(--accent); border-bottom-color: var(--accent); font-weight: 600;
+  }
+  .tab-panel { padding-top: 1px; }
+  .beta-form {
+    margin-top: 28px; padding: 20px; background: var(--panel);
+    border: 1px solid var(--line); border-radius: 8px;
+  }
+  .beta-form label { display: block; margin-bottom: 7px; font-weight: 600; }
+  .beta-form textarea, .beta-form select {
+    color: #242321; background: var(--paper); border: 1px solid var(--line); color-scheme: light;
+    border-radius: 5px; font: inherit;
+  }
+  .beta-form select option { color: #242321; background: #fffdf6; }
+  .beta-form textarea::placeholder { color: #77736d; opacity: 1; }
+  .jianpu-toolbar {
+    display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px; margin: 16px 0;
+  }
+  .toolbar-group {
+    min-width: 0; padding: 10px; border: 1px solid var(--line);
+    border-radius: 6px; background: var(--bg);
+  }
+  .toolbar-group h3 { margin: 0 0 8px; color: var(--muted); font-size: 12px; font-weight: 600; }
+  .toolbar-buttons { display: flex; flex-wrap: wrap; gap: 7px; }
+  .toolbar-button {
+    display: inline-flex; min-width: 58px; min-height: 56px; padding: 5px 8px;
+    flex-direction: column; align-items: center; justify-content: center; gap: 5px;
+    color: var(--text); background: var(--panel); border: 1px solid var(--line);
+    border-radius: 5px; font: inherit; cursor: pointer; touch-action: manipulation;
+  }
+  .toolbar-button:hover:not(:disabled) { border-color: var(--accent); }
+  .toolbar-button[aria-pressed="true"] { border-color: var(--accent); background: var(--accent-soft); color: var(--accent); }
+  .toolbar-button:disabled { color: var(--muted); opacity: .65; cursor: not-allowed; }
+  .toolbar-caption { font-size: 11px; line-height: 1.2; white-space: nowrap; }
+  .toolbar-sample { display: inline-flex; align-items: center; min-height: 26px; color: var(--text); font: 19px "Songti SC", "STSong", serif; }
+  .toolbar-number { position: relative; display: inline-block; line-height: 1.15; }
+  .duration-underlines { position: absolute; top: calc(100% + 1px); left: 50%; width: .72em; transform: translateX(-50%); }
+  .duration-underlines.one { border-top: 1.5px solid currentColor; }
+  .duration-underlines.two { height: 4px; border-top: 1.5px solid currentColor; border-bottom: 1.5px solid currentColor; }
+  .current-input-state {
+    margin: 0 0 10px; color: var(--muted); font-size: 12px; letter-spacing: .02em;
+  }
+  .current-input-state strong { color: var(--text); font-weight: 700; }
+  .octave-number { position: relative; display: inline-block; line-height: 1.15; }
+  .octave-number.high::before, .octave-number.high-two::before,
+  .octave-number.low::after, .octave-number.low-two::after {
+    content: ""; position: absolute; left: 50%; width: 4px; height: 4px;
+    transform: translateX(-50%); border-radius: 50%; background: currentColor;
+  }
+  .octave-number.high::before { top: -5px; }
+  .octave-number.high-two::before { top: -9px; box-shadow: 0 5px 0 currentColor; }
+  .octave-number.low::after { bottom: -5px; }
+  .octave-number.low-two::after { bottom: -9px; box-shadow: 0 -5px 0 currentColor; }
+  .accidental-sample { color: var(--text); font-size: 19px; line-height: 1; }
+  .jianpu-live {
+    min-height: 56px; margin: 10px 0 16px; padding: 10px 12px;
+    overflow: hidden; color: #242321; background: var(--paper); border: 1px solid var(--line); border-radius: 5px;
+    line-height: 1.8; caret-color: #242321; cursor: text;
+  }
+  .jianpu-live:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .jianpu-preview-line { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 12px 10px; min-width: max-content; }
+  .jianpu-preview-measure { display: inline-flex; align-items: flex-start; gap: 7px; min-height: 42px; padding-right: 10px; border-right: 1px solid #55514b; }
+  .jianpu-preview-measure:last-child { border-right: 0; }
+  .jianpu-rhythm-group { position: relative; display: inline-flex; align-items: flex-start; gap: 6px; padding: 0 1px 11px; }
+  .jianpu-rhythm-group::after, .jianpu-rhythm-group::before {
+    content: ""; position: absolute; left: 0; right: 0; border-top: 1.5px solid currentColor;
+  }
+  .jianpu-rhythm-group::after { bottom: 4px; }
+  .jianpu-rhythm-group.duration-sixteenth::before { bottom: 0; }
+  .jianpu-preview-note { position: relative; display: inline-flex; align-items: flex-start; padding-top: 7px; font: 25px/1.15 "Songti SC", "STSong", serif; }
+  .jianpu-preview-note .note-digit {
+    position: relative; display: inline-block; line-height: 1.15; padding-right: 2px;
+  }
+  .jianpu-preview-note.octave-high .note-digit::before,
+  .jianpu-preview-note.octave-high-two .note-digit::before,
+  .jianpu-preview-note.octave-low .note-digit::after,
+  .jianpu-preview-note.octave-low-two .note-digit::after {
+    content: ""; position: absolute; left: 50%; width: 5px; height: 5px; transform: translateX(-50%);
+    border-radius: 50%; background: currentColor;
+  }
+  .jianpu-preview-note.octave-high .note-digit::before { top: -6px; }
+  .jianpu-preview-note.octave-high-two .note-digit::before { top: -11px; box-shadow: 0 6px 0 currentColor; }
+  .jianpu-preview-note.octave-low .note-digit::after { bottom: -6px; }
+  .jianpu-preview-note.octave-low-two .note-digit::after { bottom: -11px; box-shadow: 0 -6px 0 currentColor; }
+  .jianpu-duration-dot { align-self: flex-start; width: 6px; height: 6px; margin: 16px 1px 0 0; border-radius: 50%; background: currentColor; }
+  .jianpu-note-accidental { margin-right: 1px; font-size: .72em; line-height: 1.3; }
+  .jianpu-preview-rest { display: inline-block; min-width: .7em; text-align: center; }
+  .jianpu-sustain { align-self: flex-start; width: var(--sustain-width); margin: 18px 0 0 2px; border-top: 1.5px solid currentColor; }
+  .jianpu-preview-empty { color: #77736d; font-size: 13px; }
+  .jianpu-preview-error { color: var(--accent); }
+  .beta-form textarea {
+    display: block; width: 100%; min-height: 112px; margin-top: 6px; padding: 10px;
+    resize: vertical; font-family: "SFMono-Regular", Consolas, monospace;
+  }
+  .beta-form textarea:focus, .beta-form select:focus {
+    outline: 2px solid var(--accent); outline-offset: 1px;
+  }
+  .beta-options { display: flex; flex-wrap: wrap; gap: 16px 24px; margin: 16px 0; }
+  .beta-options label { display: flex; align-items: center; gap: 8px; margin: 0; }
+  .beta-options select { padding: 6px 9px; }
+  .advanced-input { margin: 14px 0 4px; color: var(--text); font-size: 13px; }
+  .advanced-input summary { width: fit-content; cursor: pointer; }
+  .beta-form .primary {
+    padding: 8px 16px; color: #FFFDF6; background: var(--accent);
+    border: 1px solid var(--accent); border-radius: 5px; font: inherit; cursor: pointer;
+  }
+  .syntax-example { margin: 12px 0 0; color: var(--muted); font-size: 13px; }
+  .syntax-example code {
+    display: block; margin-top: 5px; padding: 8px 10px;
+    background: var(--bg); border-radius: 4px; color: var(--text);
+    font-family: "SFMono-Regular", Consolas, monospace; overflow-wrap: anywhere;
+  }
+  .beta-syntax { margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--line); }
+  .beta-syntax h3 { margin: 0 0 6px; color: var(--text); font-size: 13px; }
+  .beta-syntax ul { display: flex; flex-wrap: wrap; gap: 4px 20px; margin: 0; padding-left: 18px; }
+  .beta-note { margin: 10px 0 0; color: var(--muted); font-size: 12px; }
+  .beta-status { min-height: 1.6em; margin: 10px 0 0; color: var(--muted); font-size: 13px; }
+  .beta-status.error { color: var(--accent); }
+  .staff-output { margin-top: 24px; padding-top: 20px; border-top: 1px solid var(--line); }
+  .staff-caption { margin: 0 0 10px; color: var(--text); font-weight: 600; }
+  .staff-scroll { overflow-x: auto; color: #171717; background: #fff; border: 1px solid #c8c8c8; }
+  .staff-preview { display: block; max-width: none; padding: 12px 14px; box-sizing: content-box; color: #171717; background: #fff; }
+  .staff-download { margin-top: 14px; }
+  .changelog { margin-top: 26px; color: var(--muted); font-size: 13px; }
+  .changelog summary { width: fit-content; color: var(--text); cursor: pointer; }
+  .changelog h3 { margin: 14px 0 4px; color: var(--text); font-size: 13px; }
+  .changelog ul { margin: 0; padding-left: 20px; }
+  .feedback { display: inline-block; margin-top: 18px; color: var(--accent); font-size: 13px; }
+  [hidden] { display: none !important; }
+
+  @media (max-width: 540px) {
+    .wrap { padding: 24px 14px 56px; }
+    header.app h1 { font-size: 24px; }
+    .tabs { gap: 0; }
+    .tab { flex: 1; padding: 9px 7px; font-size: 13px; }
+    .beta-form { padding: 15px; }
+    .jianpu-toolbar { grid-template-columns: 1fr; gap: 8px; }
+    .toolbar-group { padding: 8px; }
+    .toolbar-buttons { gap: 6px; }
+    .toolbar-button { flex: 1 1 58px; }
+  }
+
   @media print {
     body { background: #fff; }
     .wrap { max-width: none; padding: 0; }
-    header.app, #dropzone, #controls, #error, footer.help { display: none !important; }
+    header.app, .product-meta, .tabs, #panel-jianpu, .changelog, .feedback,
+    #dropzone, #controls, #error, footer.help { display: none !important; }
+    #panel-musicxml { display: block !important; }
     #sheet {
       display: block !important; border: none; box-shadow: none; border-radius: 0;
       padding: 0; background: #fff; color: #000;
@@ -287,10 +446,21 @@
 <body>
 <div class="wrap">
   <header class="app">
-    <h1>五线谱 → 简谱</h1>
-    <p>上传 MusicXML 乐谱，自动转换为可打印的简谱分谱</p>
+    <h1>五线谱 ⇄ 简谱转换器</h1>
+    <p>MusicXML 与简谱之间的双向转换工具</p>
   </header>
 
+  <div class="product-meta">
+    <span>乐谱在您的浏览器本地处理，不会上传至服务器。</span>
+    <span>v2.0 · Updated October 2026</span>
+  </div>
+
+  <nav class="tabs" role="tablist" aria-label="转换方向">
+    <button class="tab" id="tab-musicxml" type="button" role="tab" aria-selected="true" aria-controls="panel-musicxml" data-target="panel-musicxml">五线谱 → 简谱</button>
+    <button class="tab" id="tab-jianpu" type="button" role="tab" aria-selected="false" aria-controls="panel-jianpu" data-target="panel-jianpu" tabindex="-1">简谱 → 五线谱 (Beta)</button>
+  </nav>
+
+  <section class="tab-panel" id="panel-musicxml" role="tabpanel" aria-labelledby="tab-musicxml">
   <div id="dropzone">
     <div class="big">拖入乐谱文件，或点击选择</div>
     <div class="hint">支持 <code>.musicxml</code> <code>.xml</code> <code>.mxl</code> —— 在 MuseScore / Sibelius / Finale 中通过「导出 MusicXML」获得</div>
@@ -344,6 +514,138 @@
       <li>文件不会上传到任何服务器，全部在浏览器本地完成转换。</li>
     </ul>
   </footer>
+  </section>
+
+  <section class="tab-panel" id="panel-jianpu" role="tabpanel" aria-labelledby="tab-jianpu" hidden>
+    <div class="beta-form">
+      <label id="jianpu-label">简谱编辑器</label>
+      <div class="jianpu-toolbar" role="group" aria-label="简谱输入工具栏">
+        <section class="toolbar-group" aria-labelledby="duration-tools-title">
+          <h3 id="duration-tools-title">时值</h3>
+          <div class="toolbar-buttons">
+            <button class="toolbar-button" type="button" data-duration="4" aria-pressed="false" aria-label="四拍">
+              <span class="toolbar-sample"><span class="toolbar-number">1<span class="toolbar-sustain">---</span></span></span><span class="toolbar-caption">四拍</span>
+            </button>
+            <button class="toolbar-button" type="button" data-duration="2" aria-pressed="false" aria-label="两拍">
+              <span class="toolbar-sample"><span class="toolbar-number">1<span class="toolbar-sustain">-</span></span></span><span class="toolbar-caption">两拍</span>
+            </button>
+            <button class="toolbar-button" type="button" data-duration="1" aria-pressed="true" aria-label="一拍">
+              <span class="toolbar-sample"><span class="toolbar-number">1</span></span><span class="toolbar-caption">一拍</span>
+            </button>
+            <button class="toolbar-button" type="button" data-duration="0.5" aria-pressed="false" aria-label="半拍">
+              <span class="toolbar-sample"><span class="toolbar-number">1<span class="duration-underlines one"></span></span></span><span class="toolbar-caption">半拍</span>
+            </button>
+            <button class="toolbar-button" type="button" data-duration="0.25" aria-pressed="false" aria-label="四分之一拍">
+              <span class="toolbar-sample"><span class="toolbar-number">1<span class="duration-underlines two"></span></span></span><span class="toolbar-caption">1/4拍</span>
+            </button>
+          </div>
+        </section>
+        <section class="toolbar-group" aria-labelledby="octave-tools-title">
+          <h3 id="octave-tools-title">音区</h3>
+          <div class="toolbar-buttons">
+            <button class="toolbar-button" type="button" data-octave="-2" aria-pressed="false" aria-label="低两八度">
+              <span class="toolbar-sample"><span class="octave-number low-two">1</span></span><span class="toolbar-caption">低两八度</span>
+            </button>
+            <button class="toolbar-button" type="button" data-octave="-1" aria-pressed="false" aria-label="低八度">
+              <span class="toolbar-sample"><span class="octave-number low">1</span></span><span class="toolbar-caption">低八度</span>
+            </button>
+            <button class="toolbar-button" type="button" data-octave="0" aria-pressed="true" aria-label="中音区">
+              <span class="toolbar-sample"><span class="octave-number">1</span></span><span class="toolbar-caption">中音区</span>
+            </button>
+            <button class="toolbar-button" type="button" data-octave="1" aria-pressed="false" aria-label="高八度">
+              <span class="toolbar-sample"><span class="octave-number high">1</span></span><span class="toolbar-caption">高八度</span>
+            </button>
+            <button class="toolbar-button" type="button" data-octave="2" aria-pressed="false" aria-label="高两八度">
+              <span class="toolbar-sample"><span class="octave-number high-two">1</span></span><span class="toolbar-caption">高两八度</span>
+            </button>
+          </div>
+        </section>
+        <section class="toolbar-group" aria-labelledby="accidental-tools-title">
+          <h3 id="accidental-tools-title">变音记号</h3>
+          <div class="toolbar-buttons">
+            <button class="toolbar-button" type="button" data-accidental="none" aria-pressed="true" aria-label="无显式变音记号"><span class="accidental-sample">1</span><span class="toolbar-caption">无</span></button>
+            <button class="toolbar-button" type="button" data-accidental="-1" aria-pressed="false" aria-label="降音"><span class="accidental-sample">♭1</span><span class="toolbar-caption">降</span></button>
+            <button class="toolbar-button" type="button" data-accidental="0" aria-pressed="false" aria-label="还原"><span class="accidental-sample">♮1</span><span class="toolbar-caption">还</span></button>
+            <button class="toolbar-button" type="button" data-accidental="1" aria-pressed="false" aria-label="升音"><span class="accidental-sample">♯1</span><span class="toolbar-caption">升</span></button>
+          </div>
+        </section>
+        <section class="toolbar-group" aria-labelledby="other-tools-title">
+          <h3 id="other-tools-title">其他</h3>
+          <div class="toolbar-buttons">
+            <button class="toolbar-button" id="toolbar-rest" type="button" aria-label="插入休止符 0"><span class="toolbar-sample">0</span><span class="toolbar-caption">休止符</span></button>
+            <button class="toolbar-button" id="toolbar-dot" type="button" aria-pressed="false" aria-label="附点"><span class="toolbar-sample">·</span><span class="toolbar-caption">附点</span></button>
+          </div>
+        </section>
+      </div>
+      <div class="current-input-state" id="current-input-state" aria-live="polite">当前输入：<strong>一拍 · 中音区</strong></div>
+      <div class="jianpu-live" id="jianpu-live" contenteditable="true" role="textbox" aria-labelledby="jianpu-label" aria-multiline="true" spellcheck="false" aria-label="简谱视觉编辑器"><span class="jianpu-preview-empty" contenteditable="false">简谱记谱会显示在这里</span></div>
+      <details class="advanced-input">
+        <summary>高级文本输入</summary>
+        <label for="jianpu-input">简谱序列化文本</label>
+        <textarea id="jianpu-input" class="advanced-jianpu-input" spellcheck="false" placeholder="输入简谱音符，例如：1 2 3 4 | 5 5 4 3"></textarea>
+      </details>
+      <div class="beta-options">
+        <label for="jianpu-key">调号
+          <select id="jianpu-key">
+            <option selected>1=C</option>
+            <option>1=D♭</option><option>1=D</option><option>1=E♭</option>
+            <option>1=E</option><option>1=F</option><option>1=G♭</option>
+            <option>1=G</option><option>1=A♭</option><option>1=A</option>
+            <option>1=B♭</option><option>1=B</option>
+          </select>
+        </label>
+        <label for="jianpu-time">拍号
+          <select id="jianpu-time">
+            <option selected>4/4</option>
+            <option>2/4</option><option>3/4</option>
+          </select>
+        </label>
+      </div>
+      <button class="primary" id="generate-staff" type="button">生成五线谱</button>
+      <p class="syntax-example">示例
+        <code>13|12|15|13|55|45|11|</code>
+      </p>
+      <p class="syntax-example">八度示例
+        <code>1235|6'5'32|1---|</code>
+      </p>
+      <div class="beta-syntax">
+        <h3>当前支持：</h3>
+        <ul>
+          <li>1–7 = 音符</li>
+          <li>0 = 休止符</li>
+          <li>- = 延长一拍</li>
+          <li>小节线会根据拍号和时值自动生成；特殊情况下也可手动输入 |。</li>
+          <li>♭ / ♮ / ♯ = 下一音符降音 / 还原 / 升音</li>
+          <li>附点按钮可切换附点时值</li>
+          <li>' / '' = 升高一个 / 两个八度；, / ,, = 降低一个 / 两个八度</li>
+        </ul>
+        <p class="beta-note">数字之间无需空格；也可以使用空格帮助阅读。</p>
+        <p class="beta-note">当前支持基础时值、附点和变音记号；连音、三连音等暂不支持。</p>
+      </div>
+      <p class="beta-status" id="beta-status" role="status" aria-live="polite"></p>
+      <div class="staff-output" id="staff-output" hidden>
+        <p class="staff-caption" id="staff-caption"></p>
+        <div class="staff-scroll" id="staff-preview"></div>
+        <button class="primary staff-download" id="download-musicxml" type="button">下载 MusicXML</button>
+      </div>
+    </div>
+  </section>
+
+  <details class="changelog">
+    <summary>更新日志 / Changelog</summary>
+    <h3>v2.0</h3>
+    <ul>
+      <li>简谱 → 五线谱功能开始测试</li>
+      <li>改善网站界面与使用体验</li>
+      <li>持续改善 MusicXML 兼容性</li>
+    </ul>
+    <h3>v1.0</h3>
+    <ul>
+      <li>MusicXML → Jianpu converter launched</li>
+    </ul>
+  </details>
+
+  <a class="feedback" href="https://github.com/lding9-netizen/musicxml-to-jianpu/issues" target="_blank" rel="noopener noreferrer">发现转换问题？反馈给我</a>
 </div>
 
 <!--EMBEDDED_SCORE-->
@@ -1800,6 +2102,734 @@ const LEGACY_SAMPLE_XML = `<?xml version="1.0" encoding="UTF-8"?>
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", run);
   else run();
 })();
+</script>
+<script>
+const tabs = Array.from(document.querySelectorAll('[role="tab"]'));
+function activateTab(tab) {
+  tabs.forEach(item => {
+    const active = item === tab;
+    item.setAttribute("aria-selected", String(active));
+    item.tabIndex = active ? 0 : -1;
+    document.getElementById(item.dataset.target).hidden = !active;
+  });
+}
+tabs.forEach((tab, index) => {
+  tab.addEventListener("click", () => activateTab(tab));
+  tab.addEventListener("keydown", event => {
+    let nextIndex;
+    if (event.key === "ArrowRight") nextIndex = (index + 1) % tabs.length;
+    if (event.key === "ArrowLeft") nextIndex = (index + tabs.length - 1) % tabs.length;
+    if (event.key === "Home") nextIndex = 0;
+    if (event.key === "End") nextIndex = tabs.length - 1;
+    if (nextIndex !== undefined) {
+      event.preventDefault();
+      tabs[nextIndex].focus();
+      activateTab(tabs[nextIndex]);
+    }
+  });
+});
+const durationSettings = {
+  4: { label: "四拍", ticks: 32, suffix: "---" },
+  2: { label: "两拍", ticks: 16, suffix: "-" },
+  1: { label: "一拍", ticks: 8, suffix: "" },
+  0.5: { label: "半拍", ticks: 4, suffix: "/" },
+  0.25: { label: "1/4拍", ticks: 2, suffix: "//" }
+};
+const octaveSettings = {
+  "-2": { label: "低两八度", suffix: ",," },
+  "-1": { label: "低八度", suffix: "," },
+  0: { label: "中音区", suffix: "" },
+  1: { label: "高八度", suffix: "'" },
+  2: { label: "高两八度", suffix: "''" }
+};
+const editorState = {
+  duration: 1,
+  octave: 0,
+  dotted: false,
+  accidental: null
+};
+
+function updateToolbarSelection() {
+  document.querySelectorAll(".toolbar-button[data-duration]").forEach(button => {
+    const active = Number(button.dataset.duration) === Number(editorState.duration);
+    button.setAttribute("aria-pressed", String(active));
+  });
+  document.querySelectorAll(".toolbar-button[data-octave]").forEach(button => {
+    const active = Number(button.dataset.octave) === Number(editorState.octave);
+    button.setAttribute("aria-pressed", String(active));
+  });
+  document.querySelectorAll(".toolbar-button[data-accidental]").forEach(button => {
+    const selected = button.dataset.accidental === "none" ? editorState.accidental === null
+      : Number(button.dataset.accidental) === editorState.accidental;
+    button.setAttribute("aria-pressed", String(selected));
+  });
+  document.getElementById("toolbar-dot").setAttribute("aria-pressed", String(editorState.dotted));
+
+  const currentInput = document.getElementById("current-input-state");
+  if (currentInput) {
+    const durationLabel = durationSettings[editorState.duration]?.label || "一拍";
+    const octaveLabel = octaveSettings[editorState.octave]?.label || "中音区";
+    const accidentalLabel = editorState.accidental === null ? "" : ` · ${editorState.accidental < 0 ? "降音待用" : editorState.accidental > 0 ? "升音待用" : "还原待用"}`;
+    currentInput.innerHTML = `当前输入：<strong>${durationLabel}${editorState.dotted ? " · 附点" : ""}${accidentalLabel} · ${octaveLabel}</strong>`;
+  }
+}
+
+function focusVisualEditor() {
+  const editor = document.getElementById("jianpu-live");
+  const serializedInput = document.getElementById("jianpu-input");
+  if (serializedInput) serializedInput.setSelectionRange(serializedInput.value.length, serializedInput.value.length);
+  if (editor) editor.focus({ preventScroll: true });
+}
+
+function appendToolbarEvent(eventText) {
+  const input = document.getElementById("jianpu-input");
+  if (!input) return;
+  const start = input.value.length;
+  const end = start;
+  const isBarline = eventText === "|";
+  if (!isBarline) {
+    const measureStart = input.value.lastIndexOf("|", start - 1) + 1;
+    const currentTicks = measureDurationTicks(input.value.slice(measureStart, start));
+    const tokenTicks = measureDurationTicks(eventText);
+    const ticksPerMeasure = Number(document.getElementById("jianpu-time").value.split("/")[0]) * 8;
+    if (currentTicks + tokenTicks > ticksPerMeasure) {
+      betaStatus.classList.add("error");
+      betaStatus.textContent = `本小节还剩 ${((ticksPerMeasure - currentTicks) / 8).toFixed(3).replace(/0+$/, "").replace(/\.$/, "")} 拍，当前时值无法放入；请更改时值后再输入。`;
+      return;
+    }
+    if (currentTicks + tokenTicks === ticksPerMeasure) eventText += "|";
+  }
+  const before = input.value.slice(0, start);
+  const after = input.value.slice(end);
+  input.value = before + eventText + after;
+  const caret = start + eventText.length;
+  input.setSelectionRange(caret, caret);
+  betaStatus.classList.remove("error");
+  betaStatus.textContent = "";
+  input.dispatchEvent(new Event("input", { bubbles: true }));
+  if (!isBarline && /[1-7]/.test(eventText) && editorState.accidental !== null) {
+    editorState.accidental = null;
+    updateToolbarSelection();
+  }
+  focusVisualEditor();
+}
+
+function buildToolbarToken(degree, octaveOffset = 0) {
+  const accidental = degree === 0 ? "" : editorState.accidental === null ? ""
+    : editorState.accidental < 0 ? "♭" : editorState.accidental > 0 ? "♯" : "♮";
+  const octaveShift = degree === 0 ? 0 : editorState.octave + octaveOffset;
+  if (Math.abs(octaveShift) > 2) return null;
+  const suffix = degree === 0 ? "" : octaveShift < 0 ? ",".repeat(-octaveShift) : "'".repeat(octaveShift);
+  const duration = durationSettings[editorState.duration] || durationSettings[1];
+  return `${accidental}${degree}${suffix}${duration.suffix}${editorState.dotted ? "." : ""}`;
+}
+
+function insertVisualNote(degree, octaveOffset = 0) {
+  const token = buildToolbarToken(degree, octaveOffset);
+  if (token === null) {
+    betaStatus.classList.add("error");
+    betaStatus.textContent = "该音高超出当前支持的两八度范围，请调整音区。";
+    return;
+  }
+  appendToolbarEvent(token);
+}
+
+function durationTicks(slashCount, dotted) {
+  const baseTicks = slashCount === 1 ? 4 : slashCount === 2 ? 2 : 8;
+  return baseTicks * (dotted ? 3 : 2) / 2;
+}
+
+function measureDurationTicks(source) {
+  let ticks = 0;
+  const tokenPattern = /[♭♮♯bn#]?[0-7][',]{0,2}(\/{1,2})?(\.)?(-*)(\.)?/g;
+  for (const match of source.matchAll(tokenPattern)) {
+    const slashCount = (match[1] || "").length;
+    const baseTicks = slashCount === 1 ? 4 : slashCount === 2 ? 2 : 8;
+    let noteTicks = (match[2] ? baseTicks * 3 / 2 : baseTicks) + (match[3] || "").length * 8;
+    if (match[4]) noteTicks *= 3 / 2;
+    ticks += noteTicks;
+  }
+  return ticks;
+}
+
+function deleteLastJianpuEvent() {
+  const input = document.getElementById("jianpu-input");
+  if (!input) return;
+  const text = input.value;
+  const matches = Array.from(text.matchAll(/[♭♮♯bn#]?[0-7][',]{0,2}(?:\/{1,2})?\.?-*\.?|\|/g));
+  if (!matches.length) {
+    input.value = "";
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+    return;
+  }
+  const lastMatch = matches[matches.length - 1];
+  const removeLength = lastMatch[0].length;
+  const pos = text.length - removeLength;
+  input.value = text.slice(0, pos);
+  input.setSelectionRange(input.value.length, input.value.length);
+  input.dispatchEvent(new Event("input", { bubbles: true }));
+}
+
+function renderJianpuPreview(source) {
+  const live = document.getElementById("jianpu-live");
+  if (!live) return;
+  const trimmed = source.trim();
+  if (!trimmed) {
+    live.innerHTML = '<span class="jianpu-preview-empty" contenteditable="false">简谱记谱会显示在这里</span>';
+    return;
+  }
+  const tokens = Array.from(trimmed.matchAll(/[♭♮♯bn#]?[0-7][',]{0,2}(?:\/{1,2})?\.?-*\.?|\|/g), match => match[0]);
+  const measureNodes = [];
+  let currentMeasure = document.createElement("span");
+  currentMeasure.className = "jianpu-preview-measure";
+  let pendingGroup = [];
+  let groupKey = null;
+  const flushGroup = () => {
+    if (pendingGroup.length) {
+      const group = document.createElement("span");
+      group.className = `jianpu-rhythm-group ${groupKey.startsWith("2:") ? "duration-sixteenth" : "duration-eighth"}`;
+      pendingGroup.forEach(note => group.appendChild(note));
+      currentMeasure.appendChild(group);
+    } else {
+      pendingGroup.forEach(note => currentMeasure.appendChild(note));
+    }
+    pendingGroup = [];
+    groupKey = null;
+  };
+  tokens.forEach(token => {
+    if (token === "|") {
+      flushGroup();
+      measureNodes.push(currentMeasure);
+      currentMeasure = document.createElement("span");
+      currentMeasure.className = "jianpu-preview-measure";
+      return;
+    }
+    const match = token.match(/^([♭♮♯bn#]?)([0-7])([',]{0,2})(\/{1,2})?(\.)?(-*)(\.)?$/);
+    if (!match) return;
+    const accidentalToken = match[1];
+    const degree = match[2];
+    const octaveMarks = match[3] || "";
+    const slashCount = (match[4] || "").length;
+    const isDotted = Boolean(match[5] || match[7]);
+    const sustainBeats = (match[6] || "").length;
+    const octaveShift = (octaveMarks[0] === "'" ? 1 : octaveMarks[0] === "," ? -1 : 0) * octaveMarks.length;
+    const groupForNote = slashCount > 0 && sustainBeats === 0 && degree !== "0"
+      ? `${slashCount}:${isDotted}` : null;
+    if (groupForNote !== groupKey) flushGroup();
+    const noteEl = document.createElement("span");
+    noteEl.className = "jianpu-preview-note";
+    if (degree !== "0" && octaveShift === 1) noteEl.classList.add("octave-high");
+    if (degree !== "0" && octaveShift === 2) noteEl.classList.add("octave-high-two");
+    if (degree !== "0" && octaveShift === -1) noteEl.classList.add("octave-low");
+    if (degree !== "0" && octaveShift === -2) noteEl.classList.add("octave-low-two");
+    const accidentalValue = accidentalToken === "♭" || accidentalToken === "b" ? -1
+      : accidentalToken === "♯" || accidentalToken === "#" ? 1
+      : accidentalToken === "♮" || accidentalToken === "n" ? 0 : null;
+    if (accidentalValue !== null) {
+      const accidental = document.createElement("span");
+      accidental.className = "jianpu-note-accidental";
+      accidental.textContent = accidentalValue < 0 ? "♭" : accidentalValue > 0 ? "♯" : "♮";
+      noteEl.appendChild(accidental);
+    }
+    const digit = document.createElement("span");
+    digit.className = "note-digit";
+    digit.textContent = degree;
+    noteEl.appendChild(digit);
+    if (isDotted) {
+      const dot = document.createElement("span");
+      dot.className = "jianpu-duration-dot";
+      dot.setAttribute("aria-hidden", "true");
+      noteEl.appendChild(dot);
+    }
+    if (sustainBeats) {
+      const sustain = document.createElement("span");
+      sustain.className = "jianpu-sustain";
+      sustain.style.setProperty("--sustain-width", `${sustainBeats * 12}px`);
+      noteEl.appendChild(sustain);
+    }
+    if (groupForNote) {
+      if (!pendingGroup.length) groupKey = groupForNote;
+      pendingGroup.push(noteEl);
+    } else {
+      if (degree === "0") noteEl.classList.add("jianpu-preview-rest");
+      currentMeasure.appendChild(noteEl);
+    }
+  });
+  flushGroup();
+  measureNodes.push(currentMeasure);
+  live.innerHTML = "";
+  measureNodes.forEach(node => {
+    if (node.children.length) live.appendChild(node);
+  });
+  if (!live.children.length) {
+    live.innerHTML = '<span class="jianpu-preview-empty" contenteditable="false">简谱记谱会显示在这里</span>';
+  }
+  live.querySelectorAll("*").forEach(child => child.setAttribute("contenteditable", "false"));
+}
+
+document.getElementById("jianpu-input").addEventListener("input", (event) => {
+  renderJianpuPreview(event.target.value);
+});
+
+document.querySelectorAll(".toolbar-button[data-duration]").forEach(button => {
+  button.addEventListener("click", () => {
+    const nextDuration = Number(button.dataset.duration);
+    editorState.duration = nextDuration;
+    updateToolbarSelection();
+    focusVisualEditor();
+  });
+});
+
+document.querySelectorAll(".toolbar-button[data-octave]").forEach(button => {
+  button.addEventListener("click", () => {
+    editorState.octave = Number(button.dataset.octave);
+    updateToolbarSelection();
+    focusVisualEditor();
+  });
+});
+
+document.querySelectorAll(".toolbar-button[data-accidental]").forEach(button => {
+  button.addEventListener("click", () => {
+    editorState.accidental = button.dataset.accidental === "none" ? null : Number(button.dataset.accidental);
+    updateToolbarSelection();
+    focusVisualEditor();
+  });
+});
+
+document.getElementById("toolbar-dot").addEventListener("click", () => {
+  editorState.dotted = !editorState.dotted;
+  updateToolbarSelection();
+  focusVisualEditor();
+});
+
+document.getElementById("toolbar-rest").addEventListener("click", () => {
+  insertVisualNote(0);
+});
+
+const visualEditor = document.getElementById("jianpu-live");
+visualEditor.addEventListener("pointerdown", event => {
+  if (event.button !== 0) return;
+  event.preventDefault();
+  focusVisualEditor();
+});
+visualEditor.addEventListener("paste", event => event.preventDefault());
+visualEditor.addEventListener("beforeinput", event => {
+  if (event.inputType === "insertText" && event.data) {
+    event.preventDefault();
+    if (/^[0-7]$/.test(event.data)) insertVisualNote(Number(event.data));
+    else if (event.data === "8") insertVisualNote(1, 1);
+    else if (event.data === "|") appendToolbarEvent("|");
+    return;
+  }
+  if (event.inputType.startsWith("insert") || event.inputType.startsWith("delete")) event.preventDefault();
+});
+visualEditor.addEventListener("keydown", (event) => {
+  const key = event.key;
+  if (event.key === "Backspace") {
+    event.preventDefault();
+    deleteLastJianpuEvent();
+    return;
+  }
+  if (key === "|") {
+    event.preventDefault();
+    appendToolbarEvent("|");
+    return;
+  }
+  if (key === "8") {
+    event.preventDefault();
+    insertVisualNote(1, 1);
+    return;
+  }
+  if (/^[0-7]$/.test(key)) {
+    event.preventDefault();
+    insertVisualNote(Number(key));
+    return;
+  }
+  if (key === "0") {
+    event.preventDefault();
+    insertVisualNote(0);
+    return;
+  }
+  if (key === "Enter" || key === "Delete" || key.length === 1) event.preventDefault();
+});
+
+updateToolbarSelection();
+renderJianpuPreview(document.getElementById("jianpu-input").value);
+
+const majorKeys = {
+  "1=C":  { tonic: 0, letter: 0, fifths: 0 },
+  "1=D♭": { tonic: 1, letter: 1, fifths: -5 },
+  "1=D":  { tonic: 2, letter: 1, fifths: 2 },
+  "1=E♭": { tonic: 3, letter: 2, fifths: -3 },
+  "1=E":  { tonic: 4, letter: 2, fifths: 4 },
+  "1=F":  { tonic: 5, letter: 3, fifths: -1 },
+  "1=G♭": { tonic: 6, letter: 4, fifths: -6 },
+  "1=G":  { tonic: 7, letter: 4, fifths: 1 },
+  "1=A♭": { tonic: 8, letter: 5, fifths: -4 },
+  "1=A":  { tonic: 9, letter: 5, fifths: 3 },
+  "1=B♭": { tonic: 10, letter: 6, fifths: -2 },
+  "1=B":  { tonic: 11, letter: 6, fifths: 5 }
+};
+const scaleIntervals = [0, 2, 4, 5, 7, 9, 11];
+const naturalSemitones = [0, 2, 4, 5, 7, 9, 11];
+const pitchLetters = ["C", "D", "E", "F", "G", "A", "B"];
+
+function parseJianpu(source, meter, keyName, allowIncomplete = false) {
+  if (!source.trim()) throw new Error("请输入简谱内容后再生成。");
+  if (!majorKeys[keyName]) throw new Error("请选择有效的调号。");
+  if (!["2/4", "3/4", "4/4"].includes(meter)) throw new Error("目前仅支持 2/4、3/4 和 4/4 拍号。");
+
+  const measures = [];
+  let current = [];
+  let previous = null;
+  let endedWithBar = false;
+  for (let index = 0; index < source.length;) {
+    const token = source[index];
+    if (/\s/.test(token)) {
+      index++;
+      continue;
+    }
+    if (token === "|") {
+      if (!current.length) throw new Error(`第 ${measures.length + 1} 小节为空，请检查小节线。`);
+      measures.push(current);
+      current = [];
+      previous = null;
+      endedWithBar = true;
+    } else if (token === "-") {
+      if (!previous) throw new Error("“-”前没有可延长的音符或休止符；请先输入 1–7 或 0。");
+      previous.beats += 1;
+      previous.sustainBeats++;
+      previous.durationTicks += 8;
+      endedWithBar = false;
+    } else if (token === ".") {
+      if (!previous) throw new Error("附点前没有可修饰的音符或休止符。");
+      if (previous.dotted) throw new Error("同一个音符目前只支持一个附点。");
+      previous.durationTicks = previous.durationTicks * 3 / 2;
+      previous.beats = previous.durationTicks / 8;
+      previous.dotted = true;
+      endedWithBar = false;
+    } else if ("♭♮♯bn#".includes(token)) {
+      const accidentalToken = token;
+      index++;
+      if (!/^[0-7]$/.test(source[index] || "")) {
+        throw new Error(`变音记号“${accidentalToken}”后需要一个音符数字。`);
+      }
+      const degree = Number(source[index++]);
+      if (degree === 0) throw new Error("休止符 0 不能添加变音记号。");
+      let octaveShift = 0;
+      if (source[index] === "'" || source[index] === ",") {
+        const marker = source[index];
+        const markerStart = index;
+        while (source[index] === marker) index++;
+        const count = index - markerStart;
+        if (source[index] === "'" || source[index] === ",") throw new Error("同一个音符不能混用升、降八度标记。");
+        if (count > 2) throw new Error("目前八度标记最多支持两个八度（'' 或 ,,）。");
+        octaveShift = marker === "'" ? count : -count;
+      }
+      let durationMarks = 0;
+      while (source[index] === "/") {
+        durationMarks++;
+        index++;
+      }
+      if (durationMarks > 2) throw new Error("时值线最多支持两条：/ 表示半拍，// 表示四分之一拍。");
+      const dotted = source[index] === ".";
+      if (dotted) index++;
+      const accidental = accidentalToken === "♭" || accidentalToken === "b" ? -1
+        : accidentalToken === "♯" || accidentalToken === "#" ? 1 : 0;
+      const ticks = durationTicks(durationMarks, dotted);
+      const baseTicks = durationMarks === 1 ? 4 : durationMarks === 2 ? 2 : 8;
+      const event = { degree, beats: ticks / 8, baseBeats: baseTicks / 8, sustainBeats: 0, baseTicks, durationTicks: ticks, octaveShift, accidental, dotted };
+      current.push(event);
+      previous = event;
+      endedWithBar = false;
+      continue;
+    } else if (/^[0-7]$/.test(token)) {
+      const degree = Number(token);
+      index++;
+      let octaveShift = 0;
+      if (source[index] === "'" || source[index] === ",") {
+        const marker = source[index];
+        const markerStart = index;
+        while (source[index] === marker) index++;
+        const count = index - markerStart;
+        if (degree === 0) throw new Error("休止符 0 不能添加八度标记。");
+        if (source[index] === "'" || source[index] === ",") {
+          throw new Error("同一个音符不能混用升、降八度标记。");
+        }
+        if (count > 2) throw new Error("目前八度标记最多支持两个八度（'' 或 ,,）。");
+        octaveShift = marker === "'" ? count : -count;
+      }
+      let durationMarks = 0;
+      while (source[index] === "/") {
+        durationMarks++;
+        index++;
+      }
+      if (durationMarks > 2) throw new Error("时值线最多支持两条：/ 表示半拍，// 表示四分之一拍。");
+      const dotted = source[index] === ".";
+      if (dotted) index++;
+      const baseBeats = durationMarks === 1 ? 0.5 : durationMarks === 2 ? 0.25 : 1;
+      const ticks = durationTicks(durationMarks, dotted);
+      const baseTicks = durationMarks === 1 ? 4 : durationMarks === 2 ? 2 : 8;
+      const event = { degree, beats: ticks / 8, baseBeats, sustainBeats: 0, baseTicks, durationTicks: ticks, octaveShift, accidental: null, dotted };
+      current.push(event);
+      previous = event;
+      endedWithBar = false;
+      continue;
+    } else {
+      throw new Error(`无法识别“${token}”。请只使用 1–7、0、♭、♮、♯、-、|、'、,、/、. 和 //。`);
+    }
+    index++;
+  }
+  if (current.length) measures.push(current);
+  else if (!endedWithBar) throw new Error("请输入至少一个音符或休止符。");
+
+  const beatsPerMeasure = Number(meter.split("/")[0]);
+  if (!allowIncomplete) {
+    measures.forEach((events, index) => {
+      const actualTicks = events.reduce((sum, event) => sum + event.durationTicks, 0);
+      const requiredTicks = beatsPerMeasure * 8;
+      if (actualTicks !== requiredTicks) {
+        const actual = actualTicks / 8;
+        throw new Error(`第 ${index + 1} 小节共有 ${actual} 拍，但当前拍号 ${meter} 需要 ${beatsPerMeasure} 拍。`);
+      }
+    });
+  }
+  return { measures, meter, keyName, hasTrailingBarline: endedWithBar };
+}
+
+function pitchForDegree(keyName, degree, octaveShift = 0, accidental = null) {
+  const key = majorKeys[keyName];
+  const letterPosition = key.letter + degree - 1;
+  const letter = letterPosition % 7;
+  const octave = 4 + Math.floor(letterPosition / 7) + octaveShift;
+  const midi = 60 + key.tonic + scaleIntervals[degree - 1] + octaveShift * 12;
+  const naturalMidi = 60 + (octave - 4) * 12 + naturalSemitones[letter];
+  const keyAlter = midi - naturalMidi;
+  const alter = accidental === null ? keyAlter : accidental === 0 ? 0 : keyAlter + accidental;
+  return { step: pitchLetters[letter], octave, alter };
+}
+
+function durationNotation(beats) {
+  const known = {
+    "0.375": { type: "16th", dots: 1, flags: 2 },
+    "0.25": { type: "16th", dots: 0, flags: 2 },
+    "0.5": { type: "eighth", dots: 0, flags: 1 },
+    "0.75": { type: "eighth", dots: 1, flags: 1 },
+    "1": { type: "quarter", dots: 0, flags: 0 },
+    "1.5": { type: "quarter", dots: 1, flags: 0 },
+    "2": { type: "half", dots: 0, flags: 0 },
+    "3": { type: "half", dots: 1, flags: 0 },
+    "4": { type: "whole", dots: 0, flags: 0 },
+    "6": { type: "whole", dots: 1, flags: 0 }
+  };
+  return known[String(beats)] || { type: null, dots: 0, flags: 0 };
+}
+
+function makeMusicXML(parsed) {
+  const key = majorKeys[parsed.keyName];
+  const lines = [
+    '<?xml version="1.0" encoding="UTF-8"?>',
+    '<score-partwise version="4.0">',
+    '  <work><work-title>Jianpu melody</work-title></work>',
+    '  <identification><encoding><software>MusicXML to Jianpu Beta</software></encoding></identification>',
+    '  <part-list><score-part id="P1"><part-name>旋律</part-name></score-part></part-list>',
+    '  <part id="P1">'
+  ];
+  parsed.measures.forEach((events, measureIndex) => {
+    lines.push(`    <measure number="${measureIndex + 1}">`);
+    if (measureIndex === 0) {
+      lines.push("      <attributes>");
+      lines.push("        <divisions>8</divisions>");
+      lines.push(`        <key><fifths>${key.fifths}</fifths><mode>major</mode></key>`);
+      lines.push(`        <time><beats>${parsed.meter.split("/")[0]}</beats><beat-type>4</beat-type></time>`);
+      lines.push("        <clef><sign>G</sign><line>2</line></clef>");
+      lines.push("      </attributes>");
+    }
+    events.forEach(event => {
+      const duration = durationNotation(event.beats);
+      if (event.degree === 0) {
+        lines.push("      <note>");
+        lines.push("        <rest/>");
+      } else {
+        const pitch = pitchForDegree(parsed.keyName, event.degree, event.octaveShift, event.accidental);
+        lines.push("      <note>");
+        lines.push("        <pitch>");
+        lines.push(`          <step>${pitch.step}</step>`);
+        if (pitch.alter) lines.push(`          <alter>${pitch.alter}</alter>`);
+        lines.push(`          <octave>${pitch.octave}</octave>`);
+        lines.push("        </pitch>");
+        if (event.accidental !== null) {
+          const accidentalName = event.accidental < 0 ? "flat" : event.accidental > 0 ? "sharp" : "natural";
+          lines.push(`        <accidental>${accidentalName}</accidental>`);
+        }
+      }
+      lines.push(`        <duration>${event.durationTicks}</duration>`);
+      lines.push("        <voice>1</voice>");
+      if (duration.type) lines.push(`        <type>${duration.type}</type>`);
+      if (duration.dots) lines.push("        <dot/>");
+      lines.push("      </note>");
+    });
+    if (measureIndex === parsed.measures.length - 1) {
+      lines.push('      <barline location="right"><bar-style>light-heavy</bar-style></barline>');
+    }
+    lines.push("    </measure>");
+  });
+  lines.push("  </part>", "</score-partwise>", "");
+  return lines.join("\n");
+}
+
+function staffPosition(pitch) {
+  const letter = pitchLetters.indexOf(pitch.step);
+  const diatonic = pitch.octave * 7 + letter;
+  return diatonic - (4 * 7 + 2);
+}
+
+function renderStaff(parsed) {
+  const fifths = majorKeys[parsed.keyName].fifths;
+  const beatCount = Number(parsed.meter.split("/")[0]);
+  const shortestNote = Math.min(...parsed.measures.flatMap(events => events.map(event => event.beats)));
+  const measureWidth = Math.max(130, beatCount * 44 + 38, beatCount * 36 / shortestNote + 38);
+  const measuresPerSystem = 3;
+  const systems = [];
+  const sharpOrder = [["F", 5], ["C", 5], ["G", 5], ["D", 5], ["A", 4], ["E", 5], ["B", 4]];
+  const flatOrder = [["B", 4], ["E", 5], ["A", 4], ["D", 5], ["G", 4], ["C", 5], ["F", 4]];
+  const signature = fifths > 0 ? sharpOrder.slice(0, fifths) : flatOrder.slice(0, -fifths);
+  const signatureX = 66;
+  const barStartX = signatureX + signature.length * 12 + 12;
+
+  for (let start = 0; start < parsed.measures.length; start += measuresPerSystem) {
+    const systemMeasures = parsed.measures.slice(start, start + measuresPerSystem);
+    const positions = systemMeasures.flatMap(events => events
+      .filter(event => event.degree !== 0)
+      .map(event => staffPosition(pitchForDegree(parsed.keyName, event.degree, event.octaveShift, event.accidental))));
+    const maxPosition = Math.max(0, ...positions);
+    const minPosition = Math.min(0, ...positions);
+    const top = 54 + Math.max(0, maxPosition - 8) * 6;
+    const bottom = top + 48;
+    const lowestNoteY = bottom - minPosition * 6;
+    const pitchLabelY = Math.max(bottom + 32, lowestNoteY + 20);
+    const width = barStartX + systemMeasures.length * measureWidth + 18;
+    const height = Math.max(168, pitchLabelY + 22);
+    const svg = [`<svg class="staff-preview" xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" role="img" aria-label="五线谱预览，第 ${Math.floor(start / measuresPerSystem) + 1} 行">`];
+    svg.push('<g fill="currentColor" stroke="currentColor" stroke-width="1.2">');
+    svg.push(`<text x="12" y="${bottom - 1}" font-family="serif" font-size="43" stroke="none">𝄞</text>`);
+    svg.push(`<text x="37" y="${top + 15}" font-family="serif" font-size="12" stroke="none">${parsed.meter}</text>`);
+    signature.forEach(([step, octave], index) => {
+      const y = bottom - staffPosition({ step, octave }) * 6;
+      svg.push(`<text x="${signatureX + index * 12}" y="${y + 5}" font-family="serif" font-size="17" stroke="none">${fifths > 0 ? "♯" : "♭"}</text>`);
+    });
+    const staffEnd = barStartX + systemMeasures.length * measureWidth;
+    for (let line = 0; line < 5; line++) {
+      const y = top + line * 12;
+      svg.push(`<line x1="${barStartX}" y1="${y}" x2="${staffEnd}" y2="${y}"/>`);
+    }
+    svg.push("</g>");
+
+    systemMeasures.forEach((events, localIndex) => {
+      const measureNumber = start + localIndex + 1;
+      const left = barStartX + localIndex * measureWidth;
+      const right = left + measureWidth;
+      svg.push(`<text x="${left + 3}" y="20" fill="#737373" font-size="10">${measureNumber}</text>`);
+      svg.push(`<line x1="${left}" y1="${top}" x2="${left}" y2="${bottom}" stroke="currentColor" stroke-width="1.2"/>`);
+      if (localIndex === systemMeasures.length - 1) {
+        svg.push(`<line x1="${right - 4}" y1="${top}" x2="${right - 4}" y2="${bottom}" stroke="currentColor" stroke-width="1.2"/>`);
+        svg.push(`<line x1="${right}" y1="${top}" x2="${right}" y2="${bottom}" stroke="currentColor" stroke-width="3"/>`);
+      } else {
+        svg.push(`<line x1="${right}" y1="${top}" x2="${right}" y2="${bottom}" stroke="currentColor" stroke-width="1.2"/>`);
+      }
+
+      let elapsed = 0;
+      events.forEach(event => {
+        const centerX = left + 18 + ((elapsed + event.beats / 2) / beatCount) * (measureWidth - 36);
+        elapsed += event.beats;
+        if (event.degree === 0) {
+          if (event.beats === 1) {
+            svg.push(`<path d="M${centerX - 2} ${top + 22} l7 7 -7 8 7 7 -7 8 6 7" fill="none" stroke="currentColor" stroke-width="2.2"/>`);
+          } else {
+            const restY = event.beats === 4 ? top + 24 : top + 12;
+            svg.push(`<rect x="${centerX - 8}" y="${restY}" width="16" height="6" fill="currentColor"/>`);
+            if (event.beats === 3) svg.push(`<circle cx="${centerX + 13}" cy="${restY + 1}" r="2" fill="currentColor"/>`);
+          }
+          return;
+        }
+
+        const pitch = pitchForDegree(parsed.keyName, event.degree, event.octaveShift, event.accidental);
+        const y = bottom - staffPosition(pitch) * 6;
+        const staffSteps = staffPosition(pitch);
+        for (let ledger = -2; ledger >= staffSteps; ledger -= 2) {
+          svg.push(`<line x1="${centerX - 10}" y1="${bottom - ledger * 6}" x2="${centerX + 10}" y2="${bottom - ledger * 6}" stroke="currentColor" stroke-width="1"/>`);
+        }
+        for (let ledger = 10; ledger <= staffSteps; ledger += 2) {
+          svg.push(`<line x1="${centerX - 10}" y1="${bottom - ledger * 6}" x2="${centerX + 10}" y2="${bottom - ledger * 6}" stroke="currentColor" stroke-width="1"/>`);
+        }
+        if (event.accidental !== null || pitch.alter) {
+          const accidental = event.accidental !== null
+            ? event.accidental < 0 ? "♭" : event.accidental > 0 ? "♯" : "♮"
+            : pitch.alter < 0 ? "♭" : "♯";
+          svg.push(`<text x="${centerX - 18}" y="${y + 5}" font-family="serif" font-size="17" stroke="none">${accidental}</text>`);
+        }
+        const hollow = event.beats > 1;
+        svg.push(`<ellipse cx="${centerX}" cy="${y}" rx="7" ry="5" transform="rotate(-20 ${centerX} ${y})" fill="${hollow ? "#fffdf6" : "currentColor"}" stroke="currentColor" stroke-width="1.6"/>`);
+        if (event.beats < 4) {
+          const stemUp = staffSteps < 4;
+          const stemX = centerX + (stemUp ? 6 : -6);
+          const stemEnd = y + (stemUp ? -31 : 31);
+          svg.push(`<line x1="${stemX}" y1="${y}" x2="${stemX}" y2="${stemEnd}" stroke="currentColor" stroke-width="1.4"/>`);
+          const noteDuration = durationNotation(event.beats);
+          for (let flag = 0; flag < noteDuration.flags; flag++) {
+            const flagY = stemEnd + (stemUp ? flag * 7 : -flag * 7);
+            const flagPath = stemUp
+              ? `M${stemX} ${flagY} q14 8 3 18`
+              : `M${stemX} ${flagY} q-14 -8 -3 -18`;
+            svg.push(`<path d="${flagPath}" fill="none" stroke="currentColor" stroke-width="1.5"/>`);
+          }
+        }
+        if (durationNotation(event.beats).dots) svg.push(`<circle cx="${centerX + 11}" cy="${y - 2}" r="2" fill="currentColor"/>`);
+        const name = `${pitch.step}${pitch.alter < 0 ? "♭" : pitch.alter > 0 ? "♯" : ""}${pitch.octave}`;
+        svg.push(`<text x="${centerX}" y="${pitchLabelY}" text-anchor="middle" fill="#737373" font-size="10">${name}</text>`);
+      });
+    });
+    svg.push("</svg>");
+    systems.push(svg.join(""));
+  }
+  return systems.join("");
+}
+
+let generatedMusicXML = "";
+const betaStatus = document.getElementById("beta-status");
+const staffOutput = document.getElementById("staff-output");
+document.getElementById("generate-staff").addEventListener("click", () => {
+  betaStatus.classList.remove("error");
+  betaStatus.textContent = "";
+  staffOutput.hidden = true;
+  generatedMusicXML = "";
+  try {
+    const parsed = parseJianpu(
+      document.getElementById("jianpu-input").value,
+      document.getElementById("jianpu-time").value,
+      document.getElementById("jianpu-key").value
+    );
+    generatedMusicXML = makeMusicXML(parsed);
+    document.getElementById("staff-preview").innerHTML = renderStaff(parsed);
+    document.getElementById("staff-caption").textContent = `${parsed.keyName} 大调 · ${parsed.meter} · ${parsed.measures.length} 小节`;
+    staffOutput.hidden = false;
+    betaStatus.textContent = "五线谱预览已生成。";
+  } catch (error) {
+    betaStatus.classList.add("error");
+    betaStatus.textContent = error.message;
+  }
+});
+document.getElementById("download-musicxml").addEventListener("click", () => {
+  if (!generatedMusicXML) return;
+  const blob = new Blob([generatedMusicXML], { type: "application/vnd.recordare.musicxml+xml;charset=utf-8" });
+  const link = document.createElement("a");
+  link.href = URL.createObjectURL(blob);
+  link.download = "jianpu-to-staff.musicxml";
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  setTimeout(() => URL.revokeObjectURL(link.href), 10000);
+});
 </script>
 </body>
 </html>
