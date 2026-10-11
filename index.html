@@ -291,6 +291,10 @@
     color: var(--accent); border-bottom-color: var(--accent); font-weight: 600;
   }
   .tab-panel { padding-top: 1px; }
+  .jianpu-guide { margin: 0 0 18px; color: var(--muted); font-size: 13px; }
+  .jianpu-guide h3 { margin: 0 0 6px; color: var(--text); font-size: 14px; }
+  .jianpu-guide ol { margin: 0; padding-left: 20px; }
+  .jianpu-guide li { margin: 3px 0; }
   .beta-form {
     margin-top: 28px; padding: 20px; background: var(--panel);
     border: 1px solid var(--line); border-radius: 8px;
@@ -457,7 +461,7 @@
 
   <nav class="tabs" role="tablist" aria-label="转换方向">
     <button class="tab" id="tab-musicxml" type="button" role="tab" aria-selected="true" aria-controls="panel-musicxml" data-target="panel-musicxml">五线谱 → 简谱</button>
-    <button class="tab" id="tab-jianpu" type="button" role="tab" aria-selected="false" aria-controls="panel-jianpu" data-target="panel-jianpu" tabindex="-1">简谱 → 五线谱 (Beta)</button>
+    <button class="tab" id="tab-jianpu" type="button" role="tab" aria-selected="false" aria-controls="panel-jianpu" data-target="panel-jianpu" tabindex="-1">简谱 → 五线谱</button>
   </nav>
 
   <section class="tab-panel" id="panel-musicxml" role="tabpanel" aria-labelledby="tab-musicxml">
@@ -519,6 +523,16 @@
   <section class="tab-panel" id="panel-jianpu" role="tabpanel" aria-labelledby="tab-jianpu" hidden>
     <div class="beta-form">
       <label id="jianpu-label">简谱编辑器</label>
+      <div class="jianpu-guide">
+        <h3>使用方法</h3>
+        <ol>
+          <li>选择调号与拍号。</li>
+          <li>选择音符时值，然后在下方编辑区直接输入数字 1–7；输入 0 添加休止符。</li>
+          <li>使用工具栏添加八度、升降/还原号、附点等记号。</li>
+          <li>系统会根据拍号和时值自动划分小节。</li>
+          <li>完成后生成五线谱，可下载 MusicXML 文件，在 MuseScore、Sibelius、Dorico 等软件中继续编辑。</li>
+        </ol>
+      </div>
       <div class="jianpu-toolbar" role="group" aria-label="简谱输入工具栏">
         <section class="toolbar-group" aria-labelledby="duration-tools-title">
           <h3 id="duration-tools-title">时值</h3>
@@ -581,6 +595,7 @@
       <div class="jianpu-live" id="jianpu-live" contenteditable="true" role="textbox" aria-labelledby="jianpu-label" aria-multiline="true" spellcheck="false" aria-label="简谱视觉编辑器"><span class="jianpu-preview-empty" contenteditable="false">简谱记谱会显示在这里</span></div>
       <details class="advanced-input">
         <summary>高级文本输入</summary>
+        <p class="beta-note">可直接输入简谱文本，适合熟悉文本记谱的进阶用户；日常输入建议使用上方编辑器。</p>
         <label for="jianpu-input">简谱序列化文本</label>
         <textarea id="jianpu-input" class="advanced-jianpu-input" spellcheck="false" placeholder="输入简谱音符，例如：1 2 3 4 | 5 5 4 3"></textarea>
       </details>
@@ -602,26 +617,13 @@
         </label>
       </div>
       <button class="primary" id="generate-staff" type="button">生成五线谱</button>
-      <p class="syntax-example">示例
-        <code>13|12|15|13|55|45|11|</code>
+      <p class="syntax-example"><strong>示例</strong>
+        <code>调号：1=C · 拍号：4/4 · 时值：一拍<br>依次输入：1 2 3 4 5 6 7，再选择高八度输入 1</code>
       </p>
-      <p class="syntax-example">八度示例
-        <code>1235|6'5'32|1---|</code>
+      <p class="syntax-example"><strong>节奏示例</strong>
+        <code>选择半拍，输入 1 2 3 4；再选择一拍，输入 5 6，即填满一个 4/4 小节。</code>
       </p>
-      <div class="beta-syntax">
-        <h3>当前支持：</h3>
-        <ul>
-          <li>1–7 = 音符</li>
-          <li>0 = 休止符</li>
-          <li>- = 延长一拍</li>
-          <li>小节线会根据拍号和时值自动生成；特殊情况下也可手动输入 |。</li>
-          <li>♭ / ♮ / ♯ = 下一音符降音 / 还原 / 升音</li>
-          <li>附点按钮可切换附点时值</li>
-          <li>' / '' = 升高一个 / 两个八度；, / ,, = 降低一个 / 两个八度</li>
-        </ul>
-        <p class="beta-note">数字之间无需空格；也可以使用空格帮助阅读。</p>
-        <p class="beta-note">当前支持基础时值、附点和变音记号；连音、三连音等暂不支持。</p>
-      </div>
+      <p class="beta-note">当前版本适合常见的单声部简谱输入与 MusicXML 转换。复杂多声部、特殊连音、装饰音及部分高级记谱，可能仍需在专业打谱软件中进一步调整。</p>
       <p class="beta-status" id="beta-status" role="status" aria-live="polite"></p>
       <div class="staff-output" id="staff-output" hidden>
         <p class="staff-caption" id="staff-caption"></p>
@@ -635,7 +637,7 @@
     <summary>更新日志 / Changelog</summary>
     <h3>v2.0</h3>
     <ul>
-      <li>简谱 → 五线谱功能开始测试</li>
+      <li>新增可视化简谱编辑与 MusicXML 下载</li>
       <li>改善网站界面与使用体验</li>
       <li>持续改善 MusicXML 兼容性</li>
     </ul>
@@ -2631,7 +2633,7 @@ function makeMusicXML(parsed) {
     '<?xml version="1.0" encoding="UTF-8"?>',
     '<score-partwise version="4.0">',
     '  <work><work-title>Jianpu melody</work-title></work>',
-    '  <identification><encoding><software>MusicXML to Jianpu Beta</software></encoding></identification>',
+    '  <identification><encoding><software>MusicXML to Jianpu</software></encoding></identification>',
     '  <part-list><score-part id="P1"><part-name>旋律</part-name></score-part></part-list>',
     '  <part id="P1">'
   ];
